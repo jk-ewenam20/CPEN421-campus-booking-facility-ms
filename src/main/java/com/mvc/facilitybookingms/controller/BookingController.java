@@ -2,6 +2,7 @@ package com.mvc.facilitybookingms.controller;
 
 import com.mvc.facilitybookingms.dto.BookingRequestDTO;
 import com.mvc.facilitybookingms.dto.BookingResponseDTO;
+import com.mvc.facilitybookingms.security.CustomUserDetails;
 import com.mvc.facilitybookingms.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -30,7 +33,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @GetMapping
-    @Operation(summary = "Get all bookings", description = "Retrieves a list of all facility bookings")
+    @Operation(summary = "Get all bookings", description = "Retrieves all facility bookings.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved all bookings",
             content = @Content(schema = @Schema(implementation = BookingResponseDTO.class)))
     public List<BookingResponseDTO> getAllBookings() {
@@ -38,35 +41,60 @@ public class BookingController {
     }
 
     @PostMapping
-    @Operation(summary = "Create a new booking", description = "Creates a new facility booking with the provided details")
+    @Operation(summary = "Create a new booking",
+            description = "Creates a booking. For USER role, the booking is automatically assigned to the authenticated user regardless of the userId field.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Booking created successfully",
                 content = @Content(schema = @Schema(implementation = BookingResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+        @ApiResponse(responseCode = "400", description = "Invalid request body or time range", content = @Content),
         @ApiResponse(responseCode = "409", description = "Facility not available for the requested time slot", content = @Content)
     })
-    public ResponseEntity<BookingResponseDTO> createBooking(@Valid @RequestBody BookingRequestDTO request) {
+    public ResponseEntity<BookingResponseDTO> createBooking(
+            @Valid @RequestBody BookingRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        // Non-admin users can only book for themselves
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            request.setUserId(userDetails.getUserId());
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update a booking", description = "Updates an existing booking with the provided details")
+    @PreAuthorize("hasRole('ADMIN') or @bookingSecurity.isOwner(#id, authentication.name)")
+    @Operation(summary = "Update a booking",
+            description = "Admin can update any booking. Users can only update their own bookings.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Booking updated successfully",
                 content = @Content(schema = @Schema(implementation = BookingResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Access denied — not your booking", content = @Content),
         @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
     })
     public ResponseEntity<BookingResponseDTO> updateBooking(
             @PathVariable @Parameter(description = "ID of the booking to update") Long id,
-            @Valid @RequestBody BookingRequestDTO request) {
+            @Valid @RequestBody BookingRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            request.setUserId(userDetails.getUserId());
+        }
+
         return ResponseEntity.ok(bookingService.updateBooking(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Cancel a booking", description = "Cancels an existing booking by its ID")
+    @PreAuthorize("hasRole('ADMIN') or @bookingSecurity.isOwner(#id, authentication.name)")
+    @Operation(summary = "Cancel a booking",
+            description = "Admin can cancel any booking. Users can only cancel their own bookings.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Booking cancelled successfully", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Access denied — not your booking", content = @Content),
         @ApiResponse(responseCode = "404", description = "Booking not found", content = @Content)
     })
     public ResponseEntity<String> cancelBooking(
@@ -77,9 +105,9 @@ public class BookingController {
 
     @GetMapping("/availability")
     @Operation(summary = "Check facility availability",
-            description = "Checks if a facility is available for the requested date and time range")
+            description = "Checks if a facility is available for the requested date and time range.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Availability check result returned",
+        @ApiResponse(responseCode = "200", description = "Availability check result",
                 content = @Content(schema = @Schema(implementation = Boolean.class))),
         @ApiResponse(responseCode = "404", description = "Facility not found", content = @Content)
     })

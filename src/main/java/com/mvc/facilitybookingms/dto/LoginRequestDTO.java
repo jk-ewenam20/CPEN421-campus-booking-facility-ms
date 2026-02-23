@@ -1,6 +1,5 @@
 package com.mvc.facilitybookingms.dto;
 
-import com.mvc.facilitybookingms.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -8,10 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserRequestDTO {
-
-    @NotBlank
-    private String name;
+public class LoginRequestDTO {
 
     @Email
     @NotBlank
@@ -19,6 +15,4 @@ public class UserRequestDTO {
 
     @NotBlank
     private String password;
-
-    private Role role; // Optional — defaults to USER if not provided
 }

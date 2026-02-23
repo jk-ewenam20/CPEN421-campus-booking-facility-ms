@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,18 +26,20 @@ public class FacilityController {
     private final FacilityService facilityService;
 
     @PostMapping
-    @Operation(summary = "Create a new facility", description = "Creates a new facility with the provided details")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create a new facility", description = "Admin only. Creates a new facility.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Facility created successfully",
                 content = @Content(schema = @Schema(implementation = FacilityDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content)
+        @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Access denied — Admin only", content = @Content)
     })
     public ResponseEntity<FacilityDTO> createFacility(@RequestBody FacilityDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(facilityService.createFacility(dto));
     }
 
     @GetMapping
-    @Operation(summary = "Get all facilities", description = "Retrieves a list of all available facilities")
+    @Operation(summary = "Get all facilities", description = "Retrieves a list of all available facilities.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved all facilities",
             content = @Content(schema = @Schema(implementation = FacilityDTO.class)))
     public List<FacilityDTO> getAllFacilities() {
@@ -44,7 +47,7 @@ public class FacilityController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get a facility by ID", description = "Retrieves a specific facility by its ID")
+    @Operation(summary = "Get a facility by ID", description = "Retrieves a specific facility by its ID.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Facility found",
                 content = @Content(schema = @Schema(implementation = FacilityDTO.class))),
@@ -56,11 +59,13 @@ public class FacilityController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update a facility", description = "Updates an existing facility with the provided details")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update a facility", description = "Admin only. Updates an existing facility.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Facility updated successfully",
                 content = @Content(schema = @Schema(implementation = FacilityDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Access denied — Admin only", content = @Content),
         @ApiResponse(responseCode = "404", description = "Facility not found", content = @Content)
     })
     public ResponseEntity<FacilityDTO> updateFacility(
@@ -70,9 +75,11 @@ public class FacilityController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a facility", description = "Deletes an existing facility by its ID")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a facility", description = "Admin only. Deletes an existing facility.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Facility deleted successfully", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Access denied — Admin only", content = @Content),
         @ApiResponse(responseCode = "404", description = "Facility not found", content = @Content)
     })
     public ResponseEntity<String> deleteFacility(
