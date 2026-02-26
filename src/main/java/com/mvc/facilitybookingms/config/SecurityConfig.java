@@ -35,6 +35,11 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                // Static frontend resources
+                .requestMatchers("/", "/index.html", "/login.html", "/register.html",
+                        "/dashboard.html", "/admin-dashboard.html", "/facilities.html",
+                        "/bookings.html", "/users.html", "/profile.html",
+                        "/css/**", "/js/**").permitAll()
                 // Public
                 .requestMatchers(SWAGGER_PATHS).permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()

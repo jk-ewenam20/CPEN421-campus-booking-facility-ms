@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users — Facility Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav id="nav"></nav>
+
+<main>
+  <div class="page-header">
+    <h1 class="page-title">Users</h1>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Edit user modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit User</h3>
+      <button class="modal-close" onclick="closeModal('userModal')">×</button>
+    </div>
+    <div id="userErr" class="alert alert-error" style="display:none"></div>
+    <form id="userForm">
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="editName" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="editEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Password <span style="color:var(--text-muted);font-weight:400">(required to save changes)</span></label>
+        <input type="password" id="editPassword" placeholder="Enter new or current password" required>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="editRole">
+          <option value="USER">USER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('userModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  // Admin only page
+  const user = initNav('users');
+  if (user.role !== 'ADMIN') window.location.href = '/dashboard.html';
+
+  let users = [];
+
+  async function load() {
+    const res = await API.get('/users');
+    if (!res || !res.ok) {
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="5" class="empty">Failed to load.</td></tr>';
+      return;
+    }
+    users = await res.json();
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tbody');
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No users found.</td></tr>'; return; }
+    tbody.innerHTML = users.map(u => `
+      <tr${u.id === user.id ? ' class="own-row"' : ''}>
+        <td>${u.id}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td><span class="badge ${u.role === 'ADMIN' ? 'badge-admin' : 'badge-user'}">${u.role}</span></td>
+        <td class="actions">
+          <button class="btn btn-sm btn-outline" onclick="openEditModal(${u.id})">Edit</button>
+          ${u.id !== user.id
+            ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Delete</button>`
+            : ''}
+        </td>
+      </tr>`).join('');
+  }
+
+  function openEditModal(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('editId').value       = u.id;
+    document.getElementById('editName').value     = u.name;
+    document.getElementById('editEmail').value    = u.email;
+    document.getElementById('editPassword').value = '';
+    document.getElementById('editRole').value     = u.role;
+    document.getElementById('userErr').style.display = 'none';
+    openModal('userModal');
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('Delete this user? This cannot be undone.')) return;
+    const res = await API.del(`/users/${id}`);
+    if (!res) return;
+    if (res.ok) { toast('User deleted'); load(); }
+    else { toast(await parseError(res), 'error'); }
+  }
+
+  document.getElementById('userForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('userErr');
+    err.style.display = 'none';
+
+    const id = document.getElementById('editId').value;
+    const password = document.getElementById('editPassword').value;
+    const payload = {
+      name:     document.getElementById('editName').value.trim(),
+      email:    document.getElementById('editEmail').value.trim(),
+      password: password || '___UNCHANGED___',   // server must have a non-blank value
+      role:     document.getElementById('editRole').value
+    };
+
+    const res = await API.put(`/users/${id}`, payload);
+    if (!res) return;
+    if (res.ok) {
+      toast('User updated');
+      closeModal('userModal');
+      load();
+    } else {
+      err.textContent = await parseError(res);
+      err.style.display = 'block';
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

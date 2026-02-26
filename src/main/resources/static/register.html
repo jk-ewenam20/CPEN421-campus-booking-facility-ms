@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Facility Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-page">
+
+<div class="auth-card">
+  <h1>Create account</h1>
+  <p class="subtitle">Register to book campus facilities</p>
+
+  <div id="err" class="alert alert-error"   style="display:none"></div>
+  <div id="ok"  class="alert alert-success" style="display:none"></div>
+
+  <form id="regForm">
+    <div class="form-group">
+      <label for="name">Full name</label>
+      <input type="text" id="name" placeholder="Jane Smith" required autofocus>
+    </div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="••••••••" required>
+    </div>
+    <div class="form-group">
+      <label for="role">Account type</label>
+      <select id="role">
+        <option value="USER">User — book facilities</option>
+        <option value="ADMIN">Admin — manage facilities &amp; users</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-full" id="submitBtn">Create account</button>
+  </form>
+
+  <p class="auth-footer">Already have an account? <a href="/login.html">Sign in</a></p>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  if (Auth.get()) window.location.href = '/dashboard.html';
+
+  document.getElementById('regForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const err = document.getElementById('err');
+    const ok  = document.getElementById('ok');
+    err.style.display = ok.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+
+    const payload = {
+      name:     document.getElementById('name').value.trim(),
+      email:    document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+      role:     document.getElementById('role').value
+    };
+
+    try {
+      const res = await fetch('/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error(await parseError(res));
+      }
+
+      ok.textContent  = 'Account created! Redirecting to login…';
+      ok.style.display = 'block';
+      document.getElementById('regForm').style.display = 'none';
+      setTimeout(() => window.location.href = '/login.html', 1800);
+    } catch (ex) {
+      err.textContent  = ex.message;
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+    }
+  });
+</script>
+</body>
+</html>

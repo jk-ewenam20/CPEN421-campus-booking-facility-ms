@@ -1,6 +1,5 @@
 package com.mvc.facilitybookingms.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,17 +18,11 @@ public class BookingRequestDTO {
     private Long userId;
 
     @NotNull
-    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    // Expected format: "yyyy-MM-dd" (e.g., "2026-02-17")
-    private LocalDate date;
+    private LocalDate date;      // ISO-8601: "yyyy-MM-dd"
 
     @NotNull
-    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "HH:mm:ss")
-    // Expected format: "HH:mm:ss" (e.g., "14:30:00")
-    private LocalTime startTime;
+    private LocalTime startTime; // ISO-8601: "HH:mm:ss"
 
     @NotNull
-    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "HH:mm:ss")
-    // Expected format: "HH:mm:ss" (e.g., "15:30:00")
-    private LocalTime endTime;
+    private LocalTime endTime;   // ISO-8601: "HH:mm:ss"
 }

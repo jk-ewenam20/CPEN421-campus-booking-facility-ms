@@ -3,6 +3,7 @@ package com.mvc.facilitybookingms.repository;
 import com.mvc.facilitybookingms.model.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -18,12 +19,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         AND b.date = :date
         AND b.startTime < :endTime
         AND b.endTime > :startTime
+        AND b.status != 'CANCELLED'
     """)
     List<Booking> findConflictingBookings(
-            Long facilityId,
-            LocalDate date,
-            LocalTime startTime,
-            LocalTime endTime
+            @Param("facilityId") Long facilityId,
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
     );
 }
 

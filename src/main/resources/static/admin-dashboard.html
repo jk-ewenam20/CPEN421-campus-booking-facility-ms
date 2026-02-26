@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Facility Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .quick-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s, transform .15s; }
+    .quick-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(-1px); }
+    .quick-card .icon { font-size: 24px; }
+    .quick-card .label { font-weight: 600; font-size: 14px; }
+    .quick-card .desc  { font-size: 12px; color: var(--text-muted); }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav id="nav"></nav>
+
+<main>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title" id="greeting">Admin Dashboard</h1>
+      <p style="color:var(--text-muted);font-size:13px;margin-top:2px">System overview and management</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-grid" style="margin-bottom:28px">
+    <div class="stat-card"><div class="stat-value" id="sUsers">—</div><div class="stat-label">Total Users</div></div>
+    <div class="stat-card"><div class="stat-value" id="sFacilities">—</div><div class="stat-label">Facilities</div></div>
+    <div class="stat-card"><div class="stat-value" id="sBookings">—</div><div class="stat-label">Total Bookings</div></div>
+    <div class="stat-card"><div class="stat-value" id="sConfirmed">—</div><div class="stat-label">Active Bookings</div></div>
+  </div>
+
+  <!-- Quick links -->
+  <p class="section-title" style="margin-bottom:14px">Quick Actions</p>
+  <div class="quick-links" style="margin-bottom:32px">
+    <a class="quick-card" href="/users.html">
+      <span class="icon">👥</span>
+      <span class="label">Manage Users</span>
+      <span class="desc">View, edit, and delete user accounts</span>
+    </a>
+    <a class="quick-card" href="/facilities.html">
+      <span class="icon">🏛️</span>
+      <span class="label">Manage Facilities</span>
+      <span class="desc">Add, edit, and remove facilities</span>
+    </a>
+    <a class="quick-card" href="/bookings.html">
+      <span class="icon">📅</span>
+      <span class="label">All Bookings</span>
+      <span class="desc">View and manage all bookings</span>
+    </a>
+    <a class="quick-card" href="/profile.html">
+      <span class="icon">⚙️</span>
+      <span class="label">My Profile</span>
+      <span class="desc">Update your account settings</span>
+    </a>
+  </div>
+
+  <!-- Two-column: Recent bookings + Recent users -->
+  <div class="two-col">
+    <!-- Recent bookings -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <p class="section-title" style="margin:0">Recent Bookings</p>
+        <a href="/bookings.html" class="btn btn-ghost btn-sm">View all →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Facility</th><th>User</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="recentBookings"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent users -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <p class="section-title" style="margin:0">Registered Users</p>
+        <a href="/users.html" class="btn btn-ghost btn-sm">View all →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <tbody id="recentUsers"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="/js/app.js"></script>
+<script>
+  const user = initNav('admin-dashboard');
+  if (user.role !== 'ADMIN') window.location.href = '/dashboard.html';
+
+  document.getElementById('greeting').textContent = `Welcome back, ${esc(user.name)}`;
+
+  async function load() {
+    const [uRes, fRes, bRes] = await Promise.all([
+      API.get('/users'),
+      API.get('/facilities'),
+      API.get('/bookings')
+    ]);
+
+    const users      = uRes && uRes.ok ? await uRes.json() : [];
+    const facilities = fRes && fRes.ok ? await fRes.json() : [];
+    const bookings   = bRes && bRes.ok ? await bRes.json() : [];
+
+    // Stats
+    document.getElementById('sUsers').textContent     = users.length;
+    document.getElementById('sFacilities').textContent = facilities.length;
+    document.getElementById('sBookings').textContent   = bookings.length;
+    document.getElementById('sConfirmed').textContent  = bookings.filter(b => b.status === 'CONFIRMED').length;
+
+    // Recent bookings (last 6)
+    const bRows = [...bookings].reverse().slice(0, 6);
+    const bTbody = document.getElementById('recentBookings');
+    bTbody.innerHTML = bRows.length
+      ? bRows.map(b => `
+          <tr>
+            <td>${esc(b.facilityName)}</td>
+            <td>${esc(b.userName)}</td>
+            <td>${b.date}</td>
+            <td><span class="badge ${{CONFIRMED:'badge-confirmed',CANCELLED:'badge-cancelled',UPDATED:'badge-updated'}[b.status]||'badge-confirmed'}">${esc(b.status)}</span></td>
+          </tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No bookings yet.</td></tr>';
+
+    // Recent users (last 6)
+    const uRows = [...users].reverse().slice(0, 6);
+    const uTbody = document.getElementById('recentUsers');
+    uTbody.innerHTML = uRows.length
+      ? uRows.map(u => `
+          <tr>
+            <td>${esc(u.name)}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${esc(u.email)}</td>
+            <td><span class="badge ${u.role === 'ADMIN' ? 'badge-admin' : 'badge-user'}">${u.role}</span></td>
+          </tr>`).join('')
+      : '<tr><td colspan="3" class="empty">No users yet.</td></tr>';
+  }
+
+  load();
+</script>
+</body>
+</html>

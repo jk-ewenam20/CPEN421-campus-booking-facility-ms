@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookings — Facility Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav id="nav"></nav>
+
+<main>
+  <div class="page-header">
+    <h1 class="page-title">Bookings</h1>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ New Booking</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Facility</th>
+          <th>User</th>
+          <th>Date</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Create / Edit modal -->
+<div class="modal-overlay" id="bookModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">New Booking</h3>
+      <button class="modal-close" onclick="closeModal('bookModal')">×</button>
+    </div>
+    <div id="bookErr" class="alert alert-error" style="display:none"></div>
+    <form id="bookForm">
+      <input type="hidden" id="bookId">
+      <div class="form-group">
+        <label>Facility</label>
+        <select id="bookFacility" required></select>
+      </div>
+      <div id="userRow" class="form-group" style="display:none">
+        <label>User</label>
+        <select id="bookUser"></select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="bookDate" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start time <span style="color:var(--text-muted);font-weight:400">(max 4:00 PM)</span></label>
+          <input type="time" id="bookStart" required max="16:00">
+        </div>
+        <div class="form-group">
+          <label>End time <span style="color:var(--text-muted);font-weight:400">(max 4:00 PM)</span></label>
+          <input type="time" id="bookEnd" required max="16:00">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('bookModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="bookSubmit">Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirmation modal (stacks above the form modal) -->
+<div class="modal-overlay conf-layer" id="confModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="confTitle">Confirm</h3>
+      <button class="modal-close" onclick="closeModal('confModal')">×</button>
+    </div>
+    <p id="confMessage" class="conf-warn"></p>
+    <div class="conf-details" id="confDetails"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('confModal')">Back</button>
+      <button class="btn" id="confBtn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  const user = initNav('bookings');
+  let bookings   = [];
+  let facilities = [];
+  let users      = [];
+  let pendingAction = null;   // holds the async function to run on confirmation
+
+  // ── Confirmation modal ─────────────────────────────────────────────────────
+  function showConfirm({ title, message, details, confirmLabel, confirmClass, onConfirm }) {
+    document.getElementById('confTitle').textContent   = title;
+    document.getElementById('confMessage').textContent = message;
+    document.getElementById('confDetails').innerHTML   = details.map(([k, v]) =>
+      `<div class="conf-row">
+         <span class="conf-key">${esc(k)}</span>
+         <span class="conf-val">${esc(v)}</span>
+       </div>`
+    ).join('');
+    const btn = document.getElementById('confBtn');
+    btn.textContent = confirmLabel;
+    btn.className   = `btn ${confirmClass}`;
+    pendingAction   = onConfirm;
+    openModal('confModal');
+  }
+
+  async function confirmAction() {
+    closeModal('confModal');
+    if (pendingAction) await pendingAction();
+    pendingAction = null;
+  }
+
+  // ── Date / time helpers ────────────────────────────────────────────────────
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+  function nowTimeStr() {
+    const n = new Date();
+    return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  }
+  function onDateChange() {
+    const dateVal = document.getElementById('bookDate').value;
+    document.getElementById('bookStart').min = (dateVal === todayStr()) ? nowTimeStr() : '';
+  }
+
+  // Status badge
+  function statusBadge(status) {
+    const map = { CONFIRMED: 'badge-confirmed', CANCELLED: 'badge-cancelled', UPDATED: 'badge-updated' };
+    return `<span class="badge ${map[status] || 'badge-confirmed'}">${esc(status)}</span>`;
+  }
+
+  // ── Data loading ───────────────────────────────────────────────────────────
+  async function load() {
+    const [bRes, fRes] = await Promise.all([API.get('/bookings'), API.get('/facilities')]);
+    bookings   = bRes && bRes.ok ? await bRes.json() : [];
+    facilities = fRes && fRes.ok ? await fRes.json() : [];
+
+    if (user.role === 'ADMIN') {
+      const uRes = await API.get('/users');
+      users = uRes && uRes.ok ? await uRes.json() : [];
+    }
+
+    renderTable();
+    populateFacilitySelect();
+  }
+
+  function canModify(b) {
+    return user.role === 'ADMIN' || b.userName === user.name;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tbody');
+    if (!bookings.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No bookings found.</td></tr>'; return; }
+
+    tbody.innerHTML = bookings.map(b => `
+      <tr${b.userName === user.name ? ' class="own-row"' : ''}>
+        <td>${b.id}</td>
+        <td>${esc(b.facilityName)}</td>
+        <td>${esc(b.userName)}</td>
+        <td>${b.date}</td>
+        <td>${fmtTime(b.startTime)}</td>
+        <td>${fmtTime(b.endTime)}</td>
+        <td>${statusBadge(b.status)}</td>
+        <td class="actions">
+          ${canModify(b)
+            ? `<button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(b)})'>Edit</button>
+               <button class="btn btn-sm btn-danger"  onclick="cancelBooking(${b.id})">Cancel</button>`
+            : '—'}
+        </td>
+      </tr>`).join('');
+  }
+
+  function populateFacilitySelect() {
+    document.getElementById('bookFacility').innerHTML =
+      '<option value="">Select facility…</option>' +
+      facilities.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  }
+  function populateUserSelect() {
+    document.getElementById('bookUser').innerHTML =
+      users.map(u => `<option value="${u.id}">${esc(u.name)} (${esc(u.email)})</option>`).join('');
+  }
+
+  document.getElementById('bookDate').addEventListener('change', onDateChange);
+
+  // ── Create ─────────────────────────────────────────────────────────────────
+  function openCreateModal() {
+    document.getElementById('modalTitle').textContent = 'New Booking';
+    document.getElementById('bookId').value           = '';
+    document.getElementById('bookForm').reset();
+    document.getElementById('bookErr').style.display  = 'none';
+    document.getElementById('bookSubmit').textContent = 'Review & Book';
+    document.getElementById('bookDate').min           = todayStr();
+    document.getElementById('bookStart').min          = nowTimeStr();
+    document.getElementById('bookDate').value         = '';
+    document.getElementById('userRow').style.display  = user.role === 'ADMIN' ? '' : 'none';
+    if (user.role === 'ADMIN') populateUserSelect();
+    populateFacilitySelect();
+    openModal('bookModal');
+  }
+
+  // ── Edit ────────────────────────────────────────────────────────────────────
+  function openEditModal(b) {
+    document.getElementById('modalTitle').textContent = 'Edit Booking';
+    document.getElementById('bookId').value           = b.id;
+    document.getElementById('bookErr').style.display  = 'none';
+    document.getElementById('bookSubmit').textContent = 'Review & Update';
+    document.getElementById('bookDate').min           = todayStr();
+    document.getElementById('bookDate').value         = b.date;
+
+    populateFacilitySelect();
+    const fac = facilities.find(f => f.name === b.facilityName);
+    if (fac) document.getElementById('bookFacility').value = fac.id;
+
+    document.getElementById('bookStart').value = fmtTime(b.startTime);
+    document.getElementById('bookEnd').value   = fmtTime(b.endTime);
+    onDateChange();
+
+    if (user.role === 'ADMIN') {
+      document.getElementById('userRow').style.display = '';
+      populateUserSelect();
+      const u = users.find(u => u.name === b.userName);
+      if (u) document.getElementById('bookUser').value = u.id;
+    }
+
+    openModal('bookModal');
+  }
+
+  // ── Cancel (confirmation modal, no native dialog) ──────────────────────────
+  function cancelBooking(id) {
+    const b = bookings.find(x => x.id === id);
+    if (!b) return;
+
+    showConfirm({
+      title:         'Cancel Booking',
+      message:       'This will mark the booking as cancelled. This action cannot be undone.',
+      details: [
+        ['Facility', b.facilityName],
+        ['Date',     b.date],
+        ['Time',     `${fmtTime(b.startTime)} – ${fmtTime(b.endTime)}`],
+        ['Status',   b.status]
+      ],
+      confirmLabel:  'Yes, cancel it',
+      confirmClass:  'btn-danger',
+      onConfirm: async () => {
+        const res = await API.del(`/bookings/${id}`);
+        if (!res) return;
+        if (res.ok) { toast('Booking cancelled'); load(); }
+        else { toast(await parseError(res), 'error'); }
+      }
+    });
+  }
+
+  // ── Form submit → validate → show confirmation ─────────────────────────────
+  document.getElementById('bookForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err     = document.getElementById('bookErr');
+    const showErr = (msg) => { err.textContent = msg; err.style.display = 'block'; };
+    err.style.display = 'none';
+
+    const id         = document.getElementById('bookId').value;
+    const facilityId = parseInt(document.getElementById('bookFacility').value, 10);
+    const dateVal    = document.getElementById('bookDate').value;
+    const startVal   = document.getElementById('bookStart').value;
+    const endVal     = document.getElementById('bookEnd').value;
+
+    // Validation
+    if (!facilityId)           { showErr('Please select a facility.'); return; }
+    if (!dateVal)              { showErr('Please select a date.'); return; }
+    if (!startVal || !endVal)  { showErr('Please set start and end times.'); return; }
+    if (dateVal < todayStr())  { showErr('Cannot book a date in the past.'); return; }
+    if (dateVal === todayStr() && startVal <= nowTimeStr()) {
+      showErr('Start time must be later than the current time.'); return;
+    }
+    if (startVal >= endVal)    { showErr('Start time must be before end time.'); return; }
+    const [eh, em] = endVal.split(':').map(Number);
+    if (eh > 16 || (eh === 16 && em > 0)) { showErr('Bookings cannot end after 4:00 PM.'); return; }
+    if (Number(startVal.split(':')[0]) >= 16) { showErr('Bookings cannot start at or after 4:00 PM.'); return; }
+
+    const facilityName = facilities.find(f => f.id === facilityId)?.name ?? '—';
+    const userId = user.role === 'ADMIN'
+      ? parseInt(document.getElementById('bookUser').value, 10)
+      : user.id;
+    const userName = user.role === 'ADMIN'
+      ? (users.find(u => u.id === userId)?.name ?? '—')
+      : user.name;
+
+    const payload = {
+      facilityId, userId,
+      date:      dateVal,
+      startTime: toApiTime(startVal),
+      endTime:   toApiTime(endVal)
+    };
+
+    const details = [
+      ['Facility',   facilityName],
+      ['Date',       dateVal],
+      ['Start time', startVal],
+      ['End time',   endVal],
+      ...(user.role === 'ADMIN' ? [['Assigned to', userName]] : [])
+    ];
+
+    showConfirm({
+      title:        id ? 'Update Booking' : 'Confirm Booking',
+      message:      id
+        ? 'Please review the updated details before saving.'
+        : 'Please review the details before confirming your booking.',
+      details,
+      confirmLabel: id ? 'Update' : 'Confirm Booking',
+      confirmClass: 'btn-primary',
+      onConfirm: async () => {
+        const res = id
+          ? await API.put(`/bookings/${id}`, payload)
+          : await API.post('/bookings', payload);
+
+        if (!res) return;
+        if (res.ok) {
+          toast(id ? 'Booking updated' : 'Booking created');
+          closeModal('bookModal');
+          load();
+        } else {
+          const msg = await parseError(res);
+          openModal('bookModal');
+          showErr(msg);
+        }
+      }
+    });
+  });
+
+  load();
+</script>
+</body>
+</html>

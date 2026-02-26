@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Facility Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav id="nav"></nav>
+
+<main>
+  <div class="page-header">
+    <h1 class="page-title" id="greeting">Dashboard</h1>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid" id="stats">
+    <div class="stat-card"><div class="stat-value" id="statFacilities">—</div><div class="stat-label">Facilities</div></div>
+    <div class="stat-card"><div class="stat-value" id="statBookings">—</div><div class="stat-label">Total Bookings</div></div>
+    <div class="stat-card" id="statMyCard"><div class="stat-value" id="statMine">—</div><div class="stat-label" id="statMineLabel">My Bookings</div></div>
+    <div class="stat-card" id="statUsersCard" style="display:none"><div class="stat-value" id="statUsers">—</div><div class="stat-label">Registered Users</div></div>
+  </div>
+
+  <!-- Recent bookings -->
+  <div style="margin-bottom:32px">
+    <p class="section-title" id="bookingsHeading">Recent Bookings</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Facility</th>
+            <th>User</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="bookingsTbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Facilities overview -->
+  <div>
+    <p class="section-title">Facilities</p>
+    <div id="facilityCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;"></div>
+  </div>
+</main>
+
+<script src="/js/app.js"></script>
+<script>
+  const user = initNav('dashboard');
+
+  async function load() {
+    document.getElementById('greeting').textContent = `Hello, ${esc(user.name)} 👋`;
+
+    const [bookRes, facRes] = await Promise.all([
+      API.get('/bookings'),
+      API.get('/facilities')
+    ]);
+
+    const bookings   = bookRes  && bookRes.ok  ? await bookRes.json()  : [];
+    const facilities = facRes   && facRes.ok   ? await facRes.json()   : [];
+
+    // Stats
+    document.getElementById('statFacilities').textContent = facilities.length;
+    document.getElementById('statBookings').textContent   = bookings.length;
+
+    const mine = bookings.filter(b => b.userName === user.name);
+    if (user.role === 'ADMIN') {
+      document.getElementById('statMine').textContent      = bookings.filter(b => b.status === 'CONFIRMED').length;
+      document.getElementById('statMineLabel').textContent = 'Confirmed';
+      document.getElementById('statUsersCard').style.display = '';
+      const uRes = await API.get('/users');
+      const users = uRes && uRes.ok ? await uRes.json() : [];
+      document.getElementById('statUsers').textContent = users.length;
+    } else {
+      document.getElementById('statMine').textContent = mine.length;
+    }
+
+    // Bookings table — last 8
+    const rows = (user.role === 'ADMIN' ? bookings : mine).slice(0, 8);
+    const tbody = document.getElementById('bookingsTbody');
+    document.getElementById('bookingsHeading').textContent =
+      user.role === 'ADMIN' ? 'Recent Bookings' : 'My Bookings';
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No bookings yet.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(b => `
+        <tr>
+          <td>${esc(b.facilityName)}</td>
+          <td>${esc(b.userName)}</td>
+          <td>${b.date}</td>
+          <td>${fmtTime(b.startTime)} – ${fmtTime(b.endTime)}</td>
+          <td><span class="badge ${{CONFIRMED:'badge-confirmed',CANCELLED:'badge-cancelled',UPDATED:'badge-updated'}[b.status]||'badge-confirmed'}">${esc(b.status)}</span></td>
+        </tr>`).join('');
+    }
+
+    // Facility cards
+    const fc = document.getElementById('facilityCards');
+    if (!facilities.length) {
+      fc.innerHTML = '<p class="empty">No facilities yet.</p>';
+    } else {
+      fc.innerHTML = facilities.map(f => `
+        <div class="card" style="padding:16px">
+          <div style="font-weight:600;margin-bottom:6px">${esc(f.name)}</div>
+          <div style="color:var(--text-muted);font-size:13px">${esc(f.location)}</div>
+          <div style="color:var(--text-muted);font-size:13px;margin-top:4px">Capacity: ${f.capacity}</div>
+          <a href="/bookings.html" class="btn btn-ghost btn-sm" style="margin-top:12px;padding-left:0">Book →</a>
+        </div>`).join('');
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
