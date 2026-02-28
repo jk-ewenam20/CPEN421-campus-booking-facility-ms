@@ -1,40 +1,20 @@
-# ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jdk-alpine AS builder
+# Use Java 21
+FROM eclipse-temurin:21-jdk
 
-WORKDIR /build
-
-# Copy Maven wrapper first (lets Docker cache the wrapper download separately)
-COPY .mvn .mvn
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw
-
-# Download all dependencies — this layer is cached unless pom.xml changes
-RUN ./mvnw dependency:go-offline -B -q
-
-# Copy source and package (skipping tests — run them in CI, not the image build)
-COPY src src
-RUN ./mvnw package -DskipTests -B -q
-
-# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
-
-# Non-root user for security
-RUN addgroup -S spring && adduser -S spring -G spring
-
+# Set working directory
 WORKDIR /app
 
-# Always activate the prod profile — entrypoint also passes -Dspring.profiles.active=prod
-# but this ENV ensures it is set even if Render overrides the start command
-ENV SPRING_PROFILES_ACTIVE=prod
+# Copy all project files
+COPY . .
 
-# Copy the fat jar and entrypoint script
-COPY --from=builder /build/target/facility-booking-ms-*.jar app.jar
-COPY docker-entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh && chown spring:spring entrypoint.sh app.jar
+# Build the project using Maven wrapper
+RUN ./mvnw clean package -DskipTests
 
-USER spring
-
-# Document the default port (Render overrides this with $PORT at runtime)
+# Expose port 8080
 EXPOSE 8080
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Copy the built jar to a known name
+RUN cp target/project-0.0.1-SNAPSHOT.jar app.jar
+
+# Run the application
+CMD ["java", "-jar", "app.jar"]
