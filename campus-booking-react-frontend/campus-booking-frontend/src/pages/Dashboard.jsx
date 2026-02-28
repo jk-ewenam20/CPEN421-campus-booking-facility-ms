@@ -76,11 +76,48 @@ export default function Dashboard() {
   const [bookAvailTimer, setBookAvailTimer] = useState(null);
 
   const load = useCallback(async () => {
-    const [[bData], [fData]] = await Promise.all([getAllBookings(), getAllFacilities()]);
-    // Filter to current user's bookings by ID (robust — doesn't depend on name format)
-    const myBookings = (bData || []).filter(b => b.userId === user?.id);
-    setBookings(myBookings);
-    setFacilities((fData || []).slice(0, 6));
+    // Retry logic for mobile cookie persistence issues
+    const maxRetries = 3;
+    let retries = 0;
+
+    while (retries < maxRetries) {
+      try {
+        const [[bData, bErr], [fData, fErr]] = await Promise.all([
+          getAllBookings(),
+          getAllFacilities()
+        ]);
+
+        // If we get actual data, we're good
+        if ((bData || fData) && !bErr && !fErr) {
+          // Filter to current user's bookings by ID (robust — doesn't depend on name format)
+          const myBookings = (bData || []).filter(b => b.userId === user?.id);
+          setBookings(myBookings);
+          setFacilities((fData || []).slice(0, 6));
+          setLoading(false);
+          return; // Success!
+        }
+
+        // If we got auth errors, don't retry - session is actually invalid
+        if (bErr === 'Session expired. Please login again.' ||
+            fErr === 'Session expired. Please login again.') {
+          break;
+        }
+
+        // Other errors - might be transient on mobile, retry
+        retries++;
+        if (retries < maxRetries) {
+          console.log(`Load failed, retry ${retries}/${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, 500 * retries)); // Exponential backoff
+        }
+      } catch (e) {
+        console.error('Load error:', e);
+        retries++;
+        if (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * retries));
+        }
+      }
+    }
+
     setLoading(false);
   }, [user]);
 

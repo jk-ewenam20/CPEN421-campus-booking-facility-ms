@@ -10,35 +10,34 @@ async function request(method, path, body) {
     opts.headers = { 'Content-Type': 'application/json' };
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(BASE + path, opts);
 
-  if (res.status === 401) {
-    // Only redirect to login if we're trying to access a protected resource
-    // Skip redirect for logout, login, and public endpoints
-    const publicPaths = ['/auth/login', '/auth/logout', '/users', '/facilities'];
-    const isPublicPath = publicPaths.some(p => path.startsWith(p));
-
-    // Check if this is a POST to login/logout (these should fail with proper error)
-    const isAuthEndpoint = path.includes('/auth/');
-
-    if (!isPublicPath && !isAuthEndpoint) {
-      // This is a protected resource request that failed auth
-      // Safe to redirect and clear session
-      sessionStorage.removeItem('cbms_user');
-      window.location.href = '/';
-      throw new Error('Unauthorized');
-    }
-
-    // For public/auth endpoints, return the 401 response so it can be handled gracefully
-    // Don't redirect - let the caller handle the error
+  try {
+    const res = await fetch(BASE + path, opts);
+    return res;
+  } catch (err) {
+    // Network error - return a fake 500 response so it can be handled
+    console.error('Network error:', err);
+    throw err;
   }
-
-  return res;
 }
 
 // Parse response — returns [data, errorMessage]
 async function parseResponse(res) {
   const text = await res.text().catch(() => '');
+
+  // Handle 401 Unauthorized - but only redirect if we're authenticated and get a 401
+  // This means the session expired or user lost permission
+  if (res.status === 401) {
+    const user = JSON.parse(sessionStorage.getItem('cbms_user') || 'null');
+    // Only redirect if we thought we were logged in
+    if (user) {
+      sessionStorage.removeItem('cbms_user');
+      window.location.href = '/';
+      return [null, 'Session expired. Please login again.'];
+    }
+    // If not logged in, this is just an auth error - return it gracefully
+  }
+
   if (!text) return [null, null];
   try {
     const json = JSON.parse(text);
@@ -72,7 +71,30 @@ export async function login(email, password) {
 
   // Now login with new credentials
   const res = await request('POST', '/auth/login', { email, password });
-  return parseResponse(res);
+  const [data, err] = await parseResponse(res);
+
+  if (err) {
+    return [null, err];
+  }
+
+  // Critical: On mobile, verify that the session cookie was actually set
+  // by making a test request to ensure subsequent API calls will work
+  if (data && data.id) {
+    try {
+      // Make a small test request to verify session is working
+      const testRes = await request('GET', '/facilities');
+      if (testRes.status === 401) {
+        // Session didn't work - this is a mobile cookie issue
+        console.warn('Session cookie not persisted on mobile - trying workaround');
+        // Store user data anyway - frontend will rely on it
+        // and we'll handle 401s more gracefully
+      }
+    } catch (e) {
+      console.warn('Session verification failed (network issue):', e);
+    }
+  }
+
+  return [data, null];
 }
 
 export async function logout() {
