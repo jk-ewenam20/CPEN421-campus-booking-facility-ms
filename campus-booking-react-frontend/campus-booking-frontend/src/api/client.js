@@ -43,8 +43,12 @@ async function parseResponse(res) {
 export async function login(email, password) {
   // Clear any existing session FIRST before logging in as new user
   // This ensures clean session switching on mobile browsers
+  // Use fetch directly to avoid request() 401 redirect for new users
   try {
-    await request('POST', '/auth/logout');
+    await fetch(BASE + '/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
   } catch (err) {
     // Logout may fail if no session exists — that's OK
     console.log('Previous session cleared or did not exist');
