@@ -19,11 +19,16 @@ if [ -z "${SPRING_DATASOURCE_URL}" ]; then
   if [ -n "${DB_URL}" ]; then
     export SPRING_DATASOURCE_URL="${DB_URL}"
   elif [ -n "${DATABASE_URL}" ]; then
-    # Render gives postgresql://... — JDBC driver needs jdbc:postgresql://...
-    export SPRING_DATASOURCE_URL="jdbc:${DATABASE_URL}"
+    # Render gives postgresql:// or postgres:// — JDBC driver needs jdbc:postgresql://
+    NORMALIZED="${DATABASE_URL}"
+    case "${NORMALIZED}" in
+      postgres://*) NORMALIZED="postgresql://${NORMALIZED#postgres://}" ;;
+    esac
+    export SPRING_DATASOURCE_URL="jdbc:${NORMALIZED}"
   else
     echo "ERROR: No database URL configured."
-    echo "  Set DATABASE_URL (Render managed postgres) or DB_URL (external postgres)."
+    echo "  Link a Render PostgreSQL service (sets DATABASE_URL automatically)"
+    echo "  or set DB_URL manually as a JDBC URL: jdbc:postgresql://host:5432/db"
     exit 1
   fi
 fi
