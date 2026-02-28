@@ -13,9 +13,24 @@ async function request(method, path, body) {
   const res = await fetch(BASE + path, opts);
 
   if (res.status === 401) {
-    sessionStorage.removeItem('cbms_user');
-    window.location.href = '/';
-    throw new Error('Unauthorized');
+    // Only redirect to login if we're trying to access a protected resource
+    // Skip redirect for logout, login, and public endpoints
+    const publicPaths = ['/auth/login', '/auth/logout', '/users', '/facilities'];
+    const isPublicPath = publicPaths.some(p => path.startsWith(p));
+
+    // Check if this is a POST to login/logout (these should fail with proper error)
+    const isAuthEndpoint = path.includes('/auth/');
+
+    if (!isPublicPath && !isAuthEndpoint) {
+      // This is a protected resource request that failed auth
+      // Safe to redirect and clear session
+      sessionStorage.removeItem('cbms_user');
+      window.location.href = '/';
+      throw new Error('Unauthorized');
+    }
+
+    // For public/auth endpoints, return the 401 response so it can be handled gracefully
+    // Don't redirect - let the caller handle the error
   }
 
   return res;
