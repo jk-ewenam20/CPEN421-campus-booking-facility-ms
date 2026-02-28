@@ -134,7 +134,7 @@ export async function login(email, password) {
 export async function logout() {
   try {
     await request('POST', '/auth/logout');
-  } catch {}
+  } catch {
   sessionStorage.removeItem('cbms_user');
   localStorage.removeItem(AUTH_STORAGE_KEY);  // Clear Safari ITP fallback
 }
