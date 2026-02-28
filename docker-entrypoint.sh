@@ -2,48 +2,50 @@
 set -e
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Database URL resolution
+# Resolve the JDBC database URL.
 #
-# Render's managed PostgreSQL provides DATABASE_URL as:
-#   postgresql://user:password@host:port/dbname
+# Render's managed PostgreSQL injects DATABASE_URL as:
+#   postgresql://user:password@host:port/dbname    (or postgres://)
 #
-# Spring Boot JDBC needs:
+# Spring Boot / HikariCP needs:
 #   jdbc:postgresql://user:password@host:port/dbname
 #
 # Resolution order:
-#   1. SPRING_DATASOURCE_URL  (explicit, already in JDBC format)
-#   2. DB_URL                 (explicit, already in JDBC format)
-#   3. DATABASE_URL           (Render-provided, auto-prefixed with "jdbc:")
+#   1. DB_URL             — explicit JDBC URL you set on Render
+#   2. DATABASE_URL       — Render-injected URL, automatically converted
 # ─────────────────────────────────────────────────────────────────────────────
-if [ -z "${SPRING_DATASOURCE_URL}" ]; then
-  if [ -n "${DB_URL}" ]; then
-    export SPRING_DATASOURCE_URL="${DB_URL}"
-  elif [ -n "${DATABASE_URL}" ]; then
-    # Render gives postgresql:// or postgres:// — JDBC driver needs jdbc:postgresql://
-    NORMALIZED="${DATABASE_URL}"
-    case "${NORMALIZED}" in
-      postgres://*) NORMALIZED="postgresql://${NORMALIZED#postgres://}" ;;
-    esac
-    export SPRING_DATASOURCE_URL="jdbc:${NORMALIZED}"
-  else
-    echo "ERROR: No database URL configured."
-    echo "  Link a Render PostgreSQL service (sets DATABASE_URL automatically)"
-    echo "  or set DB_URL manually as a JDBC URL: jdbc:postgresql://host:5432/db"
-    exit 1
-  fi
+if [ -n "${DB_URL}" ]; then
+  JDBC_URL="${DB_URL}"
+elif [ -n "${DATABASE_URL}" ]; then
+  # Normalise postgres:// → postgresql://  then prepend jdbc:
+  NORMALIZED="${DATABASE_URL}"
+  case "${NORMALIZED}" in
+    postgres://*) NORMALIZED="postgresql://${NORMALIZED#postgres://}" ;;
+  esac
+  JDBC_URL="jdbc:${NORMALIZED}"
+else
+  echo "ERROR: No database URL found."
+  echo "  Option A: Link a Render PostgreSQL service (auto-sets DATABASE_URL)."
+  echo "  Option B: Set DB_URL manually, e.g. jdbc:postgresql://host:5432/mydb?user=u&password=p"
+  exit 1
 fi
 
 # ─── Credentials ─────────────────────────────────────────────────────────────
-# Use explicit vars first, then fall back to Render's PG* vars.
-# If credentials are embedded in the JDBC URL they are still honoured by the driver.
-export SPRING_DATASOURCE_USERNAME="${DB_USERNAME:-${PGUSER:-}}"
-export SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-}}"
+# Credentials can be embedded in the URL (Render managed postgres does this),
+# or supplied separately via PG* vars that Render also injects.
+DB_USER="${DB_USERNAME:-${PGUSER:-}}"
+DB_PASS="${DB_PASSWORD:-${PGPASSWORD:-}}"
 
-echo "INFO: Starting facility-booking-ms on port ${PORT:-8080} ..."
+echo "INFO: Starting on port ${PORT:-8080}, datasource host resolved."
 
+# Pass everything as JVM -D system properties — highest priority in Spring Boot,
+# guaranteed to override anything in application-prod.properties.
 exec java \
   -Dspring.profiles.active=prod \
   -Dserver.port="${PORT:-8080}" \
+  -Dspring.datasource.url="${JDBC_URL}" \
+  -Dspring.datasource.username="${DB_USER}" \
+  -Dspring.datasource.password="${DB_PASS}" \
   -XX:+UseContainerSupport \
   -XX:MaxRAMPercentage=75.0 \
   -jar /app/app.jar

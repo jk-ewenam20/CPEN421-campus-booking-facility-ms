@@ -23,6 +23,10 @@ RUN addgroup -S spring && adduser -S spring -G spring
 
 WORKDIR /app
 
+# Always activate the prod profile — entrypoint also passes -Dspring.profiles.active=prod
+# but this ENV ensures it is set even if Render overrides the start command
+ENV SPRING_PROFILES_ACTIVE=prod
+
 # Copy the fat jar and entrypoint script
 COPY --from=builder /build/target/facility-booking-ms-*.jar app.jar
 COPY docker-entrypoint.sh entrypoint.sh
