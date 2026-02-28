@@ -14,6 +14,7 @@ import java.time.LocalTime;
 public class BookingResponseDTO {
 
     private Long id;
+    private Long userId;
     private String facilityName;
     private String userName;
 

@@ -64,6 +64,7 @@ public class AuthController {
                 userDetails.getUserId(),
                 userDetails.getEmail(),
                 role,
+                userDetails.getName(),
                 "Login successful"
         ));
     }

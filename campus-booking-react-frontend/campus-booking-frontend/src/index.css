@@ -160,6 +160,7 @@ a:hover { color: var(--primary-light); }
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-light);
+  color: white;
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
 }

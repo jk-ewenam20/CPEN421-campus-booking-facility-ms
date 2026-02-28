@@ -134,6 +134,7 @@ public class BookingServiceImpl implements BookingService {
     private BookingResponseDTO mapToResponse(Booking booking) {
         return new BookingResponseDTO(
                 booking.getId(),
+                booking.getUser().getId(),
                 booking.getFacility().getName(),
                 booking.getUser().getName(),
                 booking.getDate(),

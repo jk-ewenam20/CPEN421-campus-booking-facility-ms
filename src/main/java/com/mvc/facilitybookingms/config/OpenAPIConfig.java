@@ -9,6 +9,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,11 +25,18 @@ import java.util.List;
 @Configuration
 public class OpenAPIConfig {
 
+    @Value("${app.server.url:http://localhost:8080}")
+    private String serverUrl;
+
     @Bean
     public OpenAPI openAPI() {
-        Server server = new Server()
+        Server localServer = new Server()
                 .url("http://localhost:8080")
                 .description("Development Server");
+
+        Server configuredServer = new Server()
+                .url(serverUrl)
+                .description("Configured Server");
 
         Contact contact = new Contact()
                 .name("Facility Booking Team")
@@ -46,7 +54,7 @@ public class OpenAPIConfig {
 
         return new OpenAPI()
                 .info(info)
-                .servers(List.of(server))
+                .servers(List.of(localServer, configuredServer))
                 .addSecurityItem(new SecurityRequirement().addList("cookieAuth"));
     }
 }

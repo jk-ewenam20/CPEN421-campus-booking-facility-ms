@@ -20,20 +20,17 @@ FROM eclipse-temurin:21-jre-alpine
 
 # Non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
-USER spring
 
 WORKDIR /app
 
-# Copy the fat jar from the builder stage
+# Copy the fat jar and entrypoint script
 COPY --from=builder /build/target/facility-booking-ms-*.jar app.jar
+COPY docker-entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh && chown spring:spring entrypoint.sh app.jar
+
+USER spring
 
 # Document the default port (Render overrides this with $PORT at runtime)
 EXPOSE 8080
 
-# Activate the prod profile and bind to Render's $PORT (falls back to 8080 locally)
-ENTRYPOINT ["sh", "-c", "java \
-  -Dspring.profiles.active=prod \
-  -Dserver.port=${PORT:-8080} \
-  -XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=75.0 \
-  -jar app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]

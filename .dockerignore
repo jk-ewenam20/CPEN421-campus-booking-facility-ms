@@ -1,0 +1,27 @@
+# Build output — never copy into image build context
+target/
+
+# Version control
+.git/
+.gitignore
+
+# Frontend — not part of the backend image
+campus-booking-react-frontend/
+
+# IDE / editor files
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+*.md
+
+# Local env overrides
+.env
+.env.*
