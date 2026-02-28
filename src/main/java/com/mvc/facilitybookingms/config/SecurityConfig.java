@@ -63,8 +63,6 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                .maximumSessions(1)
-                .maxSessionsPreventsLogin(true)  // Changed from false: prevent new login if session exists
             )
             .logout(logout -> logout
                 .logoutUrl("/auth/logout")

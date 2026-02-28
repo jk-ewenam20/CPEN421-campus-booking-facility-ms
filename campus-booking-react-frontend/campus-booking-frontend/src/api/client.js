@@ -1,12 +1,8 @@
 // ─── API Client ──────────────────────────────────────────────────────────────
 // Wraps all backend calls. Uses session cookies (credentials: 'include').
-// Fallback: Uses localStorage for Safari ITP (Intelligent Tracking Prevention)
-// On 401 it clears auth and redirects to login.
+// Simple, clean implementation for mobile compatibility.
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '';  // Empty = Vite proxy (dev), full URL (prod)
-
-// Storage key for localStorage fallback (Safari ITP workaround)
-const AUTH_STORAGE_KEY = 'cbms_auth_session';
 
 async function request(method, path, body) {
   const opts = {
@@ -15,55 +11,29 @@ async function request(method, path, body) {
     headers: { 'Content-Type': 'application/json' }
   };
 
-  // Safari ITP workaround: Add auth info to localStorage as backup
-  const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (storedAuth) {
-    try {
-      const auth = JSON.parse(storedAuth);
-      // Add a custom header with auth info as fallback
-      // Backend can check this if JSESSIONID cookie is missing
-      opts.headers['X-Auth-User'] = auth.id;
-    } catch (e) {
-      // Ignore parse errors
-    }
-  }
-
   if (body !== undefined) {
     opts.body = JSON.stringify(body);
   }
 
-  try {
-    const res = await fetch(BASE + path, opts);
-    return res;
-  } catch (err) {
-    console.error('Network error:', err);
-    throw err;
-  }
+  const res = await fetch(BASE + path, opts);
+  return res;
 }
 
 // Parse response — returns [data, errorMessage]
 async function parseResponse(res) {
   const text = await res.text().catch(() => '');
 
-  // Handle 401 Unauthorized
+  // Only redirect on 401 if we're actually authenticated
+  // This prevents false logouts on auth errors
   if (res.status === 401) {
     const user = JSON.parse(sessionStorage.getItem('cbms_user') || 'null');
-    const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-
-    // If we're supposed to be logged in but got 401, it's a real auth failure
-    if (user && !storedAuth) {
-      // Session-only mode and got 401 - real logout
+    // Only redirect if we thought we were logged in
+    if (user) {
       sessionStorage.removeItem('cbms_user');
       window.location.href = '/';
       return [null, 'Session expired. Please login again.'];
     }
-
-    // If we have localStorage auth (Safari ITP fallback), don't redirect
-    // Just return the error and let the component handle it
-    if (storedAuth) {
-      console.log('Got 401 but have localStorage auth - using fallback');
-      return [null, null];  // Return empty, component will retry
-    }
+    // Otherwise just return the error
   }
 
   if (!text) return [null, null];
@@ -83,61 +53,29 @@ async function parseResponse(res) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function login(email, password) {
-  // Clear any existing session FIRST
+  // Logout first to clear any old session
   try {
     await fetch(BASE + '/auth/logout', {
       method: 'POST',
       credentials: 'include'
     });
   } catch (err) {
-    console.log('Previous session cleared or did not exist');
+    // Ignore logout errors
   }
   sessionStorage.removeItem('cbms_user');
-  localStorage.removeItem(AUTH_STORAGE_KEY);
 
   // Login with new credentials
   const res = await request('POST', '/auth/login', { email, password });
-  const [data, err] = await parseResponse(res);
-
-  if (err) {
-    return [null, err];
-  }
-
-  // ✅ CRITICAL FIX FOR SAFARI ITP:
-  // Store auth info in localStorage as backup for when JSESSIONID cookie is blocked
-  if (data && data.id) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
-      id: data.id,
-      email: data.email,
-      role: data.role,
-      name: data.name,
-      timestamp: Date.now()
-    }));
-    console.log('Auth info stored in localStorage (Safari ITP fallback)');
-  }
-
-  // Test session with a request
-  if (data && data.id) {
-    try {
-      const testRes = await request('GET', '/facilities');
-      if (testRes.status === 401) {
-        console.warn('Session cookie not persisted - using localStorage fallback');
-      }
-    } catch (e) {
-      console.warn('Session verification failed (network issue):', e);
-    }
-  }
-
-  return [data, null];
+  return parseResponse(res);
 }
 
 export async function logout() {
   try {
     await request('POST', '/auth/logout');
-  } catch {
+  } catch (err) {
+    // Ignore errors
+  }
   sessionStorage.removeItem('cbms_user');
-  localStorage.removeItem(AUTH_STORAGE_KEY);  // Clear Safari ITP fallback
-}
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
