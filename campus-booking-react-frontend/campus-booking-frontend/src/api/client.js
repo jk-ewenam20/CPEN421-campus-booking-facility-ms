@@ -41,6 +41,17 @@ async function parseResponse(res) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function login(email, password) {
+  // Clear any existing session FIRST before logging in as new user
+  // This ensures clean session switching on mobile browsers
+  try {
+    await request('POST', '/auth/logout');
+  } catch (err) {
+    // Logout may fail if no session exists — that's OK
+    console.log('Previous session cleared or did not exist');
+  }
+  sessionStorage.removeItem('cbms_user');
+
+  // Now login with new credentials
   const res = await request('POST', '/auth/login', { email, password });
   return parseResponse(res);
 }
