@@ -88,7 +88,7 @@ export default function Login() {
             style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
             disabled={loading}
           >
-            {loading ? <><Loader2 size={16} className="spin" /> Signing in…</> : 'Sign In'}
+            {loading ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> Signing in…</> : 'Sign In'}
           </button>
         </form>
 

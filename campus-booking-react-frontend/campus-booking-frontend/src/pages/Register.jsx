@@ -115,7 +115,7 @@ export default function Register() {
             style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
             disabled={loading}
           >
-            {loading ? <><Loader2 size={16} /> Creating account…</> : 'Create Account'}
+            {loading ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> Creating account…</> : 'Create Account'}
           </button>
         </form>
 

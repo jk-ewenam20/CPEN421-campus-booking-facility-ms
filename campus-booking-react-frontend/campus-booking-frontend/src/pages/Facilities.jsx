@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -15,6 +15,24 @@ import {
 // ─── Time slot config ────────────────────────────────────────────────────────
 const START_SLOTS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
 const ALL_END_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+
+// ─── FacilityForm Component (Memoized) ──────────────────────────────────────
+const FacilityFormComponent = memo(({ form, setField }) => (
+  <>
+    <div className="form-group">
+      <label className="form-label">Facility Name</label>
+      <input className="form-control" placeholder="e.g. Main Auditorium" value={form.name} onChange={setField('name')} />
+    </div>
+    <div className="form-group">
+      <label className="form-label">Location</label>
+      <input className="form-control" placeholder="e.g. Block A, Room 101" value={form.location} onChange={setField('location')} />
+    </div>
+    <div className="form-group">
+      <label className="form-label">Capacity (persons)</label>
+      <input className="form-control" type="number" min="1" placeholder="50" value={form.capacity} onChange={setField('capacity')} />
+    </div>
+  </>
+));
 
 function endSlotsFor(start) {
   if (!start) return ALL_END_SLOTS;
@@ -242,22 +260,6 @@ export default function Facilities() {
     f.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  const FacilityForm = () => (
-    <>
-      <div className="form-group">
-        <label className="form-label">Facility Name</label>
-        <input className="form-control" placeholder="e.g. Main Auditorium" value={form.name} onChange={setField('name')} />
-      </div>
-      <div className="form-group">
-        <label className="form-label">Location</label>
-        <input className="form-control" placeholder="e.g. Block A, Room 101" value={form.location} onChange={setField('location')} />
-      </div>
-      <div className="form-group">
-        <label className="form-label">Capacity (persons)</label>
-        <input className="form-control" type="number" min="1" placeholder="50" value={form.capacity} onChange={setField('capacity')} />
-      </div>
-    </>
-  );
 
   const BookForm = () => (
     <>
@@ -437,7 +439,7 @@ export default function Facilities() {
           </>
         }
       >
-        <FacilityForm />
+        <FacilityFormComponent form={form} setField={setField} />
       </Modal>
 
       {/* Delete Modal */}
