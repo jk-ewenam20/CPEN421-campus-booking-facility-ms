@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { logout as apiLogout } from '../api/client';
 
 const AuthContext = createContext(null);
@@ -12,6 +12,32 @@ function loadUser() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(loadUser);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // On mount, verify session with backend
+  useEffect(() => {
+    async function verifySession() {
+      try {
+        // Check if we have a stored user or token
+        const storedUser = loadUser();
+
+        // If no stored user, we're not authenticated
+        if (!storedUser) {
+          setIsLoading(false);
+          return;
+        }
+
+        // We have a stored user, trust it (cookie/token will validate on first API call)
+        setUser(storedUser);
+      } catch (err) {
+        // Silent fail, just mark as not authenticated
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    verifySession();
+  }, []);
 
   const signIn = useCallback((userData) => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
@@ -26,7 +52,7 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'ADMIN';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, signIn, signOut, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -37,3 +63,5 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+
+

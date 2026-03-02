@@ -433,7 +433,7 @@ export default function Facilities() {
           <>
             <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 size={15} /> : null}
+              {saving ? <Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> : null}
               {modal === 'create' ? 'Create Facility' : 'Save Changes'}
             </button>
           </>
@@ -452,7 +452,7 @@ export default function Facilities() {
           <>
             <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
             <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>
-              {saving ? <Loader2 size={15} /> : <Trash2 size={14} />} Delete
+              {saving ? <Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Trash2 size={14} />} Delete
             </button>
           </>
         }
@@ -476,7 +476,7 @@ export default function Facilities() {
               onClick={handleBookSave}
               disabled={bookSaving || bookAvail === false}
             >
-              {bookSaving ? <Loader2 size={15} /> : <CheckCircle2 size={15} />}
+              {bookSaving ? <Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> : <CheckCircle2 size={15} />}
               Confirm Booking
             </button>
           </>

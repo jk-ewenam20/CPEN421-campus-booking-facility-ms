@@ -8,11 +8,16 @@ The **Facility Booking Microservice** is a Spring Boot REST API for managing fac
 **Local Dev URL:** `http://localhost:8080`
 **API Documentation:** `https://cpen421-campus-booking-facility-ms.onrender.com/swagger-ui.html`
 
-**API Version:** 1.0.0
+**Contributors:**
+
+- Daniel Agyin Manford - 11015506
+- Kudiabor Jonathan Kwabena Ewenam - 11254301
+  **API Version:** 1.0.0
+  **Spring Boot Version:** 3.5.10**Spring Boot Version:** 3.5.10
 
 ---
 
-## Table of Contents
+## Table of Contents**Spring Boot Version:** 3.5.10
 
 1. [Authentication](#authentication)
 2. [Endpoints](#endpoints)
@@ -63,6 +68,7 @@ POST /auth/login
 **Description:** Authenticates a user and creates a session.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -77,6 +83,7 @@ POST /auth/login
 | `password` | String | Yes | User password |
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -97,14 +104,17 @@ POST /auth/login
 | `message` | String | Success message |
 
 **Response Headers:**
+
 - `Set-Cookie: JSESSIONID=<session-id>; HttpOnly; Secure; SameSite=None; Path=/`
 
 **Status Codes:**
+
 - `200 OK` — Login successful, session created
 - `401 Unauthorized` — Invalid email or password
 - `400 Bad Request` — Missing or invalid fields
 
 **Example (cURL):**
+
 ```bash
 curl -X POST https://cpen421-campus-booking-facility-ms.onrender.com/auth/login \
   -H "Content-Type: application/json" \
@@ -128,6 +138,7 @@ POST /auth/logout
 **Authentication Required:** Yes (session cookie)
 
 **Response Body (200 OK):**
+
 ```json
 {
   "message": "Logged out successfully"
@@ -135,10 +146,12 @@ POST /auth/logout
 ```
 
 **Status Codes:**
+
 - `200 OK` — Logout successful
 - `401 Unauthorized` — No active session
 
 **Example (cURL):**
+
 ```bash
 curl -X POST https://cpen421-campus-booking-facility-ms.onrender.com/auth/logout \
   -b cookies.txt
@@ -157,6 +170,7 @@ POST /users
 **Description:** Creates a new user account. No authentication required.
 
 **Request Body:**
+
 ```json
 {
   "name": "Jane Smith",
@@ -175,6 +189,7 @@ POST /users
 | `role` | String | No | User role (`ADMIN` or `USER`). Defaults to `USER` if omitted |
 
 **Response Body (201 Created):**
+
 ```json
 {
   "id": 2,
@@ -193,11 +208,13 @@ POST /users
 | `role` | String | User role |
 
 **Status Codes:**
+
 - `201 Created` — User registered successfully
 - `400 Bad Request` — Invalid input or email already exists
 - `409 Conflict` — Email already in use
 
 **Example (cURL):**
+
 ```bash
 curl -X POST https://cpen421-campus-booking-facility-ms.onrender.com/users \
   -H "Content-Type: application/json" \
@@ -221,6 +238,7 @@ GET /users
 **Authentication Required:** Yes (Admin role)
 
 **Response Body (200 OK):**
+
 ```json
 [
   {
@@ -239,11 +257,13 @@ GET /users
 ```
 
 **Status Codes:**
+
 - `200 OK` — Users retrieved successfully
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — User does not have Admin role
 
 **Example (cURL):**
+
 ```bash
 curl -X GET https://cpen421-campus-booking-facility-ms.onrender.com/users \
   -b cookies.txt
@@ -267,6 +287,7 @@ GET /users/{id}
 | `id` | Number | User ID |
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -277,12 +298,14 @@ GET /users/{id}
 ```
 
 **Status Codes:**
+
 - `200 OK` — User found
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — Access denied (not your profile and not Admin)
 - `404 Not Found` — User does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X GET https://cpen421-campus-booking-facility-ms.onrender.com/users/1 \
   -b cookies.txt
@@ -306,6 +329,7 @@ PUT /users/{id}
 | `id` | Number | User ID |
 
 **Request Body:**
+
 ```json
 {
   "name": "John Updated",
@@ -318,6 +342,7 @@ PUT /users/{id}
 **Request Fields:** Same as Register endpoint (all optional but recommended to include all)
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -328,6 +353,7 @@ PUT /users/{id}
 ```
 
 **Status Codes:**
+
 - `200 OK` — User updated successfully
 - `400 Bad Request` — Invalid input
 - `401 Unauthorized` — No active session
@@ -335,6 +361,7 @@ PUT /users/{id}
 - `404 Not Found` — User does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X PUT https://cpen421-campus-booking-facility-ms.onrender.com/users/1 \
   -H "Content-Type: application/json" \
@@ -364,17 +391,20 @@ DELETE /users/{id}
 | `id` | Number | User ID to delete |
 
 **Response Body (200 OK):**
+
 ```json
 "User deleted"
 ```
 
 **Status Codes:**
+
 - `200 OK` — User deleted successfully
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — User does not have Admin role
 - `404 Not Found` — User does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X DELETE https://cpen421-campus-booking-facility-ms.onrender.com/users/2 \
   -b cookies.txt
@@ -395,6 +425,7 @@ POST /facilities
 **Authentication Required:** Yes (Admin role)
 
 **Request Body:**
+
 ```json
 {
   "name": "Meeting Room A",
@@ -411,6 +442,7 @@ POST /facilities
 | `capacity` | Number | Yes | Max number of people |
 
 **Response Body (201 Created):**
+
 ```json
 {
   "id": 1,
@@ -421,12 +453,14 @@ POST /facilities
 ```
 
 **Status Codes:**
+
 - `201 Created` — Facility created successfully
 - `400 Bad Request` — Invalid input
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — User does not have Admin role
 
 **Example (cURL):**
+
 ```bash
 curl -X POST https://cpen421-campus-booking-facility-ms.onrender.com/facilities \
   -H "Content-Type: application/json" \
@@ -451,6 +485,7 @@ GET /facilities
 **Authentication Required:** No
 
 **Response Body (200 OK):**
+
 ```json
 [
   {
@@ -469,9 +504,11 @@ GET /facilities
 ```
 
 **Status Codes:**
+
 - `200 OK` — Facilities retrieved successfully
 
 **Example (cURL):**
+
 ```bash
 curl -X GET https://cpen421-campus-booking-facility-ms.onrender.com/facilities
 ```
@@ -494,6 +531,7 @@ GET /facilities/{id}
 | `id` | Number | Facility ID |
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -504,10 +542,12 @@ GET /facilities/{id}
 ```
 
 **Status Codes:**
+
 - `200 OK` — Facility found
 - `404 Not Found` — Facility does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X GET https://cpen421-campus-booking-facility-ms.onrender.com/facilities/1
 ```
@@ -530,6 +570,7 @@ PUT /facilities/{id}
 | `id` | Number | Facility ID |
 
 **Request Body:**
+
 ```json
 {
   "name": "Meeting Room A (Updated)",
@@ -539,6 +580,7 @@ PUT /facilities/{id}
 ```
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -549,6 +591,7 @@ PUT /facilities/{id}
 ```
 
 **Status Codes:**
+
 - `200 OK` — Facility updated successfully
 - `400 Bad Request` — Invalid input
 - `401 Unauthorized` — No active session
@@ -556,6 +599,7 @@ PUT /facilities/{id}
 - `404 Not Found` — Facility does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X PUT https://cpen421-campus-booking-facility-ms.onrender.com/facilities/1 \
   -H "Content-Type: application/json" \
@@ -585,17 +629,20 @@ DELETE /facilities/{id}
 | `id` | Number | Facility ID |
 
 **Response Body (200 OK):**
+
 ```json
 "Facility deleted"
 ```
 
 **Status Codes:**
+
 - `200 OK` — Facility deleted successfully
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — User does not have Admin role
 - `404 Not Found` — Facility does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X DELETE https://cpen421-campus-booking-facility-ms.onrender.com/facilities/1 \
   -b cookies.txt
@@ -616,6 +663,7 @@ GET /bookings
 **Authentication Required:** Yes
 
 **Response Body (200 OK):**
+
 ```json
 [
   {
@@ -642,10 +690,12 @@ GET /bookings
 ```
 
 **Status Codes:**
+
 - `200 OK` — Bookings retrieved successfully
 - `401 Unauthorized` — No active session
 
 **Example (cURL):**
+
 ```bash
 curl -X GET https://cpen421-campus-booking-facility-ms.onrender.com/bookings \
   -b cookies.txt
@@ -664,6 +714,7 @@ POST /bookings
 **Authentication Required:** Yes
 
 **Request Body:**
+
 ```json
 {
   "facilityId": 1,
@@ -684,6 +735,7 @@ POST /bookings
 | `endTime` | String | Yes | End time (ISO-8601: `HH:mm:ss`) |
 
 **Response Body (201 Created):**
+
 ```json
 {
   "id": 3,
@@ -698,6 +750,7 @@ POST /bookings
 ```
 
 **Status Codes:**
+
 - `201 Created` — Booking created successfully
 - `400 Bad Request` — Invalid input or invalid time range
 - `401 Unauthorized` — No active session
@@ -705,6 +758,7 @@ POST /bookings
 - `409 Conflict` — Facility not available for the requested time slot
 
 **Example (cURL):**
+
 ```bash
 curl -X POST https://cpen421-campus-booking-facility-ms.onrender.com/bookings \
   -H "Content-Type: application/json" \
@@ -736,6 +790,7 @@ PUT /bookings/{id}
 | `id` | Number | Booking ID |
 
 **Request Body:**
+
 ```json
 {
   "facilityId": 1,
@@ -747,6 +802,7 @@ PUT /bookings/{id}
 ```
 
 **Response Body (200 OK):**
+
 ```json
 {
   "id": 3,
@@ -761,6 +817,7 @@ PUT /bookings/{id}
 ```
 
 **Status Codes:**
+
 - `200 OK` — Booking updated successfully
 - `400 Bad Request` — Invalid input
 - `401 Unauthorized` — No active session
@@ -768,6 +825,7 @@ PUT /bookings/{id}
 - `404 Not Found` — Booking does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X PUT https://cpen421-campus-booking-facility-ms.onrender.com/bookings/3 \
   -H "Content-Type: application/json" \
@@ -799,17 +857,20 @@ DELETE /bookings/{id}
 | `id` | Number | Booking ID |
 
 **Response Body (200 OK):**
+
 ```json
 "Booking cancelled"
 ```
 
 **Status Codes:**
+
 - `200 OK` — Booking cancelled successfully
 - `401 Unauthorized` — No active session
 - `403 Forbidden` — Access denied (not your booking and not Admin)
 - `404 Not Found` — Booking does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X DELETE https://cpen421-campus-booking-facility-ms.onrender.com/bookings/3 \
   -b cookies.txt
@@ -836,20 +897,24 @@ GET /bookings/availability
 | `endTime` | String | Yes | End time (ISO-8601: `HH:mm:ss`) |
 
 **Response Body (200 OK):**
+
 ```json
 true
 ```
 
 The response is a boolean:
+
 - `true` — Facility is available for the requested time slot
 - `false` — Facility is already booked
 
 **Status Codes:**
+
 - `200 OK` — Availability check completed
 - `401 Unauthorized` — No active session
 - `404 Not Found` — Facility does not exist
 
 **Example (cURL):**
+
 ```bash
 curl -X GET "https://cpen421-campus-booking-facility-ms.onrender.com/bookings/availability?facilityId=1&date=2026-03-20&startTime=10:00:00&endTime=11:30:00" \
   -b cookies.txt
@@ -949,30 +1014,30 @@ or
 
 ### Common Error Scenarios
 
-| Scenario | Status | Error Message |
-|----------|--------|---------------|
-| Missing authentication cookie | 401 | `Unauthorized` |
-| Invalid credentials | 401 | `Invalid credentials` |
-| Insufficient permissions | 403 | `Forbidden` — `You do not have permission to access this resource` |
-| Resource not found | 404 | `<Resource> not found` |
-| Duplicate email | 409 | `Email already exists` |
-| Invalid time range | 400 | `Invalid time range` |
-| Facility unavailable | 409 | `Facility not available for the requested time slot` |
+| Scenario                      | Status | Error Message                                                      |
+| ----------------------------- | ------ | ------------------------------------------------------------------ |
+| Missing authentication cookie | 401    | `Unauthorized`                                                     |
+| Invalid credentials           | 401    | `Invalid credentials`                                              |
+| Insufficient permissions      | 403    | `Forbidden` — `You do not have permission to access this resource` |
+| Resource not found            | 404    | `<Resource> not found`                                             |
+| Duplicate email               | 409    | `Email already exists`                                             |
+| Invalid time range            | 400    | `Invalid time range`                                               |
+| Facility unavailable          | 409    | `Facility not available for the requested time slot`               |
 
 ---
 
 ## Status Codes
 
-| Code | Meaning |
-|------|---------|
-| **200** | OK — Request successful |
-| **201** | Created — Resource created successfully |
-| **400** | Bad Request — Invalid input or malformed request |
-| **401** | Unauthorized — Authentication required or failed |
-| **403** | Forbidden — Access denied (insufficient permissions) |
-| **404** | Not Found — Resource does not exist |
+| Code    | Meaning                                                                    |
+| ------- | -------------------------------------------------------------------------- |
+| **200** | OK — Request successful                                                    |
+| **201** | Created — Resource created successfully                                    |
+| **400** | Bad Request — Invalid input or malformed request                           |
+| **401** | Unauthorized — Authentication required or failed                           |
+| **403** | Forbidden — Access denied (insufficient permissions)                       |
+| **404** | Not Found — Resource does not exist                                        |
 | **409** | Conflict — Resource conflict (e.g., duplicate email, facility unavailable) |
-| **500** | Internal Server Error — Server-side error |
+| **500** | Internal Server Error — Server-side error                                  |
 
 ---
 
@@ -1000,37 +1065,47 @@ Currently, no API-wide rate limiting is enforced. Use responsibly in production.
 
 ```javascript
 // Login
-const response = await fetch('https://cpen421-campus-booking-facility-ms.onrender.com/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include',  // Include cookies
-  body: JSON.stringify({ email: 'user@example.com', password: 'password123' })
-});
+const response = await fetch(
+  "https://cpen421-campus-booking-facility-ms.onrender.com/auth/login",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include", // Include cookies
+    body: JSON.stringify({
+      email: "user@example.com",
+      password: "password123",
+    }),
+  },
+);
 
 const user = await response.json();
-console.log('User:', user);
+console.log("User:", user);
 
 // Create Booking
-const bookingRes = await fetch('https://cpen421-campus-booking-facility-ms.onrender.com/bookings', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include',
-  body: JSON.stringify({
-    facilityId: 1,
-    userId: 1,
-    date: '2026-03-20',
-    startTime: '10:00:00',
-    endTime: '11:30:00'
-  })
-});
+const bookingRes = await fetch(
+  "https://cpen421-campus-booking-facility-ms.onrender.com/bookings",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      facilityId: 1,
+      userId: 1,
+      date: "2026-03-20",
+      startTime: "10:00:00",
+      endTime: "11:30:00",
+    }),
+  },
+);
 
 const booking = await bookingRes.json();
-console.log('Booking created:', booking);
+console.log("Booking created:", booking);
 ```
 
 ### Using Swagger UI
 
 The API provides an interactive Swagger UI at:
+
 - **Production:** `https://cpen421-campus-booking-facility-ms.onrender.com/swagger-ui.html`
 - **Local Dev:** `http://localhost:8080/swagger-ui.html`
 
@@ -1043,6 +1118,7 @@ The API provides an interactive Swagger UI at:
 **Problem:** Login works, but subsequent requests return 401.
 
 **Solution:**
+
 - Ensure frontend uses `credentials: 'include'` on all fetch calls
 - Verify that both frontend and backend use HTTPS in production
 - Check CORS settings: `CORS_ALLOWED_ORIGINS` env var must match your frontend URL
@@ -1052,6 +1128,7 @@ The API provides an interactive Swagger UI at:
 **Problem:** Facility appears booked even though you're not aware of a conflicting booking.
 
 **Solution:**
+
 - Check all bookings: `GET /bookings`
 - Verify exact times (start/end): times must not overlap with existing bookings
 - Remember times are in UTC/server timezone
@@ -1061,11 +1138,6 @@ The API provides an interactive Swagger UI at:
 **Problem:** Registration fails with email already in use.
 
 **Solution:**
+
 - Use a different email address
 - If you forgot your password, ask an Admin to delete your old account
-
----
-
-**Last Updated:** February 28, 2026  
-**API Version:** 1.0.0  
-**Spring Boot Version:** 3.5.10

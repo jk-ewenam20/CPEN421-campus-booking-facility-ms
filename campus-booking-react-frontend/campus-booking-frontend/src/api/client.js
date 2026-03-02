@@ -1,8 +1,24 @@
 // ─── API Client ──────────────────────────────────────────────────────────────
 // Wraps all backend calls. Uses session cookies (credentials: 'include').
 // Simple, clean implementation for mobile compatibility.
+// Supports both cookie-based and local storage fallback for Safari compatibility.
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '';  // Empty = Vite proxy (dev), full URL (prod)
+const STORAGE_KEY = 'cbms_user';
+const TOKEN_STORAGE_KEY = 'cbms_token';
+
+// Store auth token for Safari compatibility (fallback when cookies fail)
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+}
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_STORAGE_KEY) || null;
+}
 
 async function request(method, path, body) {
   const opts = {
@@ -10,6 +26,12 @@ async function request(method, path, body) {
     credentials: 'include',  // Send cookies
     headers: { 'Content-Type': 'application/json' }
   };
+
+  // Add Authorization header with token if available (Safari fallback)
+  const token = getAuthToken();
+  if (token) {
+    opts.headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (body !== undefined) {
     opts.body = JSON.stringify(body);
@@ -26,11 +48,12 @@ async function parseResponse(res) {
   // Only redirect on 401 if we're actually authenticated
   // This prevents false logouts on auth errors
   if (res.status === 401) {
-    const user = JSON.parse(sessionStorage.getItem('cbms_user') || 'null');
+    const user = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
     // Only redirect if we thought we were logged in
     if (user) {
-      sessionStorage.removeItem('cbms_user');
-      window.location.href = '/';
+      sessionStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.location.href = '/login';
       return [null, 'Session expired. Please login again.'];
     }
     // Otherwise just return the error
@@ -62,11 +85,22 @@ export async function login(email, password) {
   } catch (err) {
     // Ignore logout errors
   }
-  sessionStorage.removeItem('cbms_user');
+  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
 
   // Login with new credentials
   const res = await request('POST', '/auth/login', { email, password });
-  return parseResponse(res);
+  const [data, err] = await parseResponse(res);
+
+  if (!err && data) {
+    // Store token from response if available (for Safari fallback)
+    // Backend should include token in response or in Set-Cookie header
+    if (data.token) {
+      setAuthToken(data.token);
+    }
+  }
+
+  return [data, err];
 }
 
 export async function logout() {
@@ -75,7 +109,8 @@ export async function logout() {
   } catch (err) {
     // Ignore errors
   }
-  sessionStorage.removeItem('cbms_user');
+  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

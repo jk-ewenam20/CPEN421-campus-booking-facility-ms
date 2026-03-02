@@ -60,12 +60,14 @@ public class AuthController {
         String role = userDetails.getAuthorities().iterator().next().getAuthority()
                 .replace("ROLE_", "");
 
-        return ResponseEntity.ok(new LoginResponseDTO(
+        LoginResponseDTO response = new LoginResponseDTO(
                 userDetails.getUserId(),
                 userDetails.getEmail(),
                 role,
                 userDetails.getName(),
                 "Login successful"
-        ));
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

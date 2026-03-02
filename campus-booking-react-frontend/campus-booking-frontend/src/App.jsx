@@ -29,7 +29,17 @@ function AppLayout() {
 
 // Smart root redirect
 function RootRedirect() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isLoading } = useAuth();
+
+  // Don't render while loading
+  if (isLoading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>Loading...</div>
+      </div>
+    </div>;
+  }
+
   if (!user) return <Navigate to="/" replace />;
   return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
 }
