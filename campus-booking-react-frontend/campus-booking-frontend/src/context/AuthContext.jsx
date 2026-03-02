@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { logout as apiLogout, getUser, setUser, validateSession } from '../api/client';
+import { logout as apiLogout, getAuthUser, setAuthUser, validateSession } from '../api/client';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUserState] = useState(() => getUser());
+  const [user, setUserState] = useState(() => getAuthUser());
   const [isLoading, setIsLoading] = useState(true);
 
   // On mount, restore and validate user session
@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
     async function restoreSession() {
       try {
         // First, try to load from localStorage (persists across Safari tabs)
-        const savedUser = getUser();
+        const savedUser = getAuthUser();
 
         if (!savedUser) {
           // No saved user, not authenticated
@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
 
         if (err) {
           // Session invalid, clear it
-          setUser(null);
+          setAuthUser(null);
           setUserState(null);
         } else if (validatedUser) {
           // Session is valid
@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
         }
       } catch (err) {
         // Network error or validation failed - trust localStorage for now
+        const savedUser = getAuthUser();
         if (savedUser) {
           setUserState(savedUser);
         }
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback((userData) => {
     // Use persistent storage helper
-    setUser(userData);
+    setAuthUser(userData);
     setUserState(userData);
   }, []);
 

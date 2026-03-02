@@ -10,7 +10,7 @@ const TOKEN_STORAGE_KEY = 'cbms_token';
 // Use localStorage for persistence (works across Safari tabs/refreshes)
 // Fallback to sessionStorage only for non-Safari browsers
 
-export function setUser(userData) {
+export function setAuthUser(userData) {
   if (userData) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
@@ -20,7 +20,7 @@ export function setUser(userData) {
   }
 }
 
-export function getUser() {
+export function getAuthUser() {
   // Try localStorage first (Safari + persistence)
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) return JSON.parse(stored);
@@ -76,10 +76,10 @@ async function parseResponse(res) {
 
   // Handle 401 - only clear if we thought we were authenticated
   if (res.status === 401) {
-    const user = getUser();
+    const user = getAuthUser();
     if (user) {
       // Clear all auth data
-      setUser(null);
+      setAuthUser(null);
       setAuthToken(null);
       window.location.href = '/login';
       return [null, 'Session expired. Please login again.'];
@@ -109,7 +109,7 @@ export async function login(email, password) {
   } catch (err) {
     // Ignore errors
   }
-  setUser(null);
+  setAuthUser(null);
   setAuthToken(null);
 
   // Login with new credentials
@@ -118,7 +118,7 @@ export async function login(email, password) {
 
   if (!err && data) {
     // Store user data in both storages for persistence across Safari
-    setUser(data);
+    setAuthUser(data);
     // If backend returns token, store it (for Safari fallback)
     if (data.token) {
       setAuthToken(data.token);
@@ -134,7 +134,7 @@ export async function logout() {
   } catch (err) {
     // Ignore errors
   }
-  setUser(null);
+  setAuthUser(null);
   setAuthToken(null);
 }
 
@@ -223,7 +223,7 @@ export async function checkAvailability(facilityId, date, startTime, endTime) {
 // ── Session Validation ────────────────────────────────────────────────────────
 // For Safari: validate session is still alive when app starts
 export async function validateSession() {
-  const user = getUser();
+  const user = getAuthUser();
   if (!user) return [null, 'No user'];
 
   // Make a simple request to validate cookie/token still works
