@@ -1,52 +1,59 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { logout as apiLogout } from '../api/client';
+import { logout as apiLogout, getUser, setUser, validateSession } from '../api/client';
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = 'cbms_user';
-
-function loadUser() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); }
-  catch { return null; }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(loadUser);
+  const [user, setUserState] = useState(() => getUser());
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, verify session with backend
+  // On mount, restore and validate user session
   useEffect(() => {
-    async function verifySession() {
+    async function restoreSession() {
       try {
-        // Check if we have a stored user or token
-        const storedUser = loadUser();
+        // First, try to load from localStorage (persists across Safari tabs)
+        const savedUser = getUser();
 
-        // If no stored user, we're not authenticated
-        if (!storedUser) {
+        if (!savedUser) {
+          // No saved user, not authenticated
           setIsLoading(false);
           return;
         }
 
-        // We have a stored user, trust it (cookie/token will validate on first API call)
-        setUser(storedUser);
+        // We have a saved user, validate the session is still active
+        // This is important for Safari where cookies may expire
+        const [validatedUser, err] = await validateSession();
+
+        if (err) {
+          // Session invalid, clear it
+          setUser(null);
+          setUserState(null);
+        } else if (validatedUser) {
+          // Session is valid
+          setUserState(validatedUser);
+        }
       } catch (err) {
-        // Silent fail, just mark as not authenticated
+        // Network error or validation failed - trust localStorage for now
+        if (savedUser) {
+          setUserState(savedUser);
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
-    verifySession();
+    restoreSession();
   }, []);
 
   const signIn = useCallback((userData) => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+    // Use persistent storage helper
     setUser(userData);
+    setUserState(userData);
   }, []);
 
   const signOut = useCallback(async () => {
     await apiLogout();
-    setUser(null);
+    setUserState(null);
   }, []);
 
   const isAdmin = user?.role === 'ADMIN';

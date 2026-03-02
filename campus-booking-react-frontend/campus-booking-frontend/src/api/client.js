@@ -1,33 +1,62 @@
 // ─── API Client ──────────────────────────────────────────────────────────────
-// Wraps all backend calls. Uses session cookies (credentials: 'include').
-// Simple, clean implementation for mobile compatibility.
-// Supports both cookie-based and local storage fallback for Safari compatibility.
+// Wraps all backend calls. Uses session cookies + localStorage for Safari compat.
+// For Safari: localStorage persists cookies when they fail due to strict policies
 
-const BASE = import.meta.env.VITE_API_BASE_URL || '';  // Empty = Vite proxy (dev), full URL (prod)
+const BASE = import.meta.env.VITE_API_BASE_URL || '';
 const STORAGE_KEY = 'cbms_user';
 const TOKEN_STORAGE_KEY = 'cbms_token';
 
-// Store auth token for Safari compatibility (fallback when cookies fail)
+// ─── Storage Helpers ─────────────────────────────────────────────────────────
+// Use localStorage for persistence (works across Safari tabs/refreshes)
+// Fallback to sessionStorage only for non-Safari browsers
+
+export function setUser(userData) {
+  if (userData) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+export function getUser() {
+  // Try localStorage first (Safari + persistence)
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) return JSON.parse(stored);
+  // Fallback to sessionStorage
+  const session = sessionStorage.getItem(STORAGE_KEY);
+  if (session) return JSON.parse(session);
+  return null;
+}
+
 export function setAuthToken(token) {
   if (token) {
+    // Store in both localStorage (persistence) and as Authorization header
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
   }
 }
 
 export function getAuthToken() {
-  return localStorage.getItem(TOKEN_STORAGE_KEY) || null;
+  // Try localStorage first (Safari + persistence)
+  const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (stored) return stored;
+  // Fallback to sessionStorage
+  return sessionStorage.getItem(TOKEN_STORAGE_KEY) || null;
 }
 
 async function request(method, path, body) {
   const opts = {
     method,
-    credentials: 'include',  // Send cookies
+    credentials: 'include',  // Always send cookies
     headers: { 'Content-Type': 'application/json' }
   };
 
-  // Add Authorization header with token if available (Safari fallback)
+  // Add Authorization header with token (Safari fallback when cookies fail)
   const token = getAuthToken();
   if (token) {
     opts.headers['Authorization'] = `Bearer ${token}`;
@@ -45,18 +74,16 @@ async function request(method, path, body) {
 async function parseResponse(res) {
   const text = await res.text().catch(() => '');
 
-  // Only redirect on 401 if we're actually authenticated
-  // This prevents false logouts on auth errors
+  // Handle 401 - only clear if we thought we were authenticated
   if (res.status === 401) {
-    const user = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
-    // Only redirect if we thought we were logged in
+    const user = getUser();
     if (user) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      // Clear all auth data
+      setUser(null);
+      setAuthToken(null);
       window.location.href = '/login';
       return [null, 'Session expired. Please login again.'];
     }
-    // Otherwise just return the error
   }
 
   if (!text) return [null, null];
@@ -76,25 +103,23 @@ async function parseResponse(res) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function login(email, password) {
-  // Logout first to clear any old session
+  // Clear any old session
   try {
-    await fetch(BASE + '/auth/logout', {
-      method: 'POST',
-      credentials: 'include'
-    });
+    await fetch(BASE + '/auth/logout', { method: 'POST', credentials: 'include' });
   } catch (err) {
-    // Ignore logout errors
+    // Ignore errors
   }
-  sessionStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  setUser(null);
+  setAuthToken(null);
 
   // Login with new credentials
   const res = await request('POST', '/auth/login', { email, password });
   const [data, err] = await parseResponse(res);
 
   if (!err && data) {
-    // Store token from response if available (for Safari fallback)
-    // Backend should include token in response or in Set-Cookie header
+    // Store user data in both storages for persistence across Safari
+    setUser(data);
+    // If backend returns token, store it (for Safari fallback)
     if (data.token) {
       setAuthToken(data.token);
     }
@@ -109,8 +134,8 @@ export async function logout() {
   } catch (err) {
     // Ignore errors
   }
-  sessionStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  setUser(null);
+  setAuthToken(null);
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
@@ -193,4 +218,21 @@ export async function checkAvailability(facilityId, date, startTime, endTime) {
   const params = new URLSearchParams({ facilityId, date, startTime, endTime });
   const res = await request('GET', `/bookings/availability?${params}`);
   return parseResponse(res);
+}
+
+// ── Session Validation ────────────────────────────────────────────────────────
+// For Safari: validate session is still alive when app starts
+export async function validateSession() {
+  const user = getUser();
+  if (!user) return [null, 'No user'];
+
+  // Make a simple request to validate cookie/token still works
+  try {
+    const res = await request('GET', '/bookings');
+    const [, err] = await parseResponse(res);
+    if (err) return [null, err];
+    return [user, null];
+  } catch (e) {
+    return [null, e?.message || 'Session validation failed'];
+  }
 }
