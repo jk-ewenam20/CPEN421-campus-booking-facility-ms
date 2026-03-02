@@ -27,5 +27,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime
     );
-}
 
+    @Query("""
+        SELECT b FROM Booking b
+        WHERE b.user.id = :userId
+        AND b.status != 'CANCELLED'
+    """)
+    List<Booking> findByUserId(@Param("userId") Long userId);
+}

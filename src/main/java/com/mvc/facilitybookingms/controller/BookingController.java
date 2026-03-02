@@ -32,12 +32,26 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    @GetMapping
-    @Operation(summary = "Get all bookings", description = "Retrieves all facility bookings.")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved all bookings",
+    @GetMapping("/me")
+    @Operation(summary = "Get bookings for the authenticated user", description = "Retrieves bookings for the currently authenticated user.")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved user's bookings",
             content = @Content(schema = @Schema(implementation = BookingResponseDTO.class)))
-    public List<BookingResponseDTO> getAllBookings() {
-        return bookingService.getAllBookings();
+    public List<BookingResponseDTO> getMyBookings(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return bookingService.getBookingsForUser(userDetails.getUserId());
+    }
+
+    @GetMapping
+    @Operation(summary = "Get all bookings", description = "Retrieves all facility bookings. Only admins can see all bookings; users see only their own.")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved bookings",
+            content = @Content(schema = @Schema(implementation = BookingResponseDTO.class)))
+    public List<BookingResponseDTO> getAllBookings(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (isAdmin) {
+            return bookingService.getAllBookings();
+        } else {
+            return bookingService.getBookingsForUser(userDetails.getUserId());
+        }
     }
 
     @PostMapping

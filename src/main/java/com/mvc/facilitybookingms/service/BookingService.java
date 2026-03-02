@@ -21,4 +21,6 @@ public interface BookingService {
                               LocalTime endTime);
 
     BookingResponseDTO updateBooking(Long id, BookingRequestDTO request);
+
+    List<BookingResponseDTO> getBookingsForUser(Long userId);
 }

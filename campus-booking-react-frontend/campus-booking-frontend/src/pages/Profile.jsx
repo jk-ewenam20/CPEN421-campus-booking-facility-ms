@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
-import { getUser, updateUser, getAllBookings } from '../api/client';
+import { getUser, updateUser, getAllBookings, getMyBookings } from '../api/client';
 import { format, parseISO, isFuture } from 'date-fns';
 import { User, Mail, Lock, ShieldCheck, Loader2, CalendarDays, Building2, CheckCircle2 } from 'lucide-react';
 
@@ -23,16 +23,13 @@ export default function Profile() {
     setLoading(true);
     const [[pData], [bData]] = await Promise.all([
       getUser(user.id),
-      getAllBookings()
+      user.role === 'ADMIN' ? getAllBookings() : getMyBookings()
     ]);
     if (pData) {
       setProfile(pData);
       setForm({ name: pData.name || '', email: pData.email, password: '' });
     }
-    const myBookings = (bData || []).filter(b =>
-      b.userName === (pData?.name || user?.email) || b.userName === user?.email
-    );
-    setBookings(myBookings);
+    setBookings(bData || []);
     setLoading(false);
   }
 

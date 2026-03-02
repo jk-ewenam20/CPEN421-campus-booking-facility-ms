@@ -220,6 +220,11 @@ export async function checkAvailability(facilityId, date, startTime, endTime) {
   return parseResponse(res);
 }
 
+export async function getMyBookings() {
+  const res = await request('GET', '/bookings/me');
+  return parseResponse(res);
+}
+
 // ── Session Validation ────────────────────────────────────────────────────────
 // For Safari: validate session is still alive when app starts
 export async function validateSession() {

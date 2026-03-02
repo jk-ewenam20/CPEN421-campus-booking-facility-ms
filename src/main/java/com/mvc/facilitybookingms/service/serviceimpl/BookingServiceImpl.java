@@ -131,6 +131,14 @@ public class BookingServiceImpl implements BookingService {
         return mapToResponse(updated);
     }
 
+    @Override
+    public List<BookingResponseDTO> getBookingsForUser(Long userId) {
+        return bookingRepository.findByUserId(userId)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private BookingResponseDTO mapToResponse(Booking booking) {
         return new BookingResponseDTO(
                 booking.getId(),

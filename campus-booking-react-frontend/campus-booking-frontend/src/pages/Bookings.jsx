@@ -13,8 +13,14 @@ import {
 } from 'lucide-react';
 
 // ─── Time slot config ────────────────────────────────────────────────────────
-const START_SLOTS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
-const ALL_END_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+const START_SLOTS = [
+  '07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'
+];
+const ALL_END_SLOTS = [
+  '07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'
+];
 
 function endSlotsFor(start) {
   if (!start) return ALL_END_SLOTS;
@@ -22,9 +28,11 @@ function endSlotsFor(start) {
 }
 
 function fmtSlot(t) {
-  const h = parseInt(t, 10);
-  if (h === 12) return '12:00 PM';
-  return h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
 function isWeekday(dateStr) {
@@ -53,7 +61,7 @@ function makeEmptyForm(facilityId = '') {
   const date = nextWeekday();
   const nowH = date === today ? new Date().getHours() : -1;
   const startTime = START_SLOTS.find(t => parseInt(t, 10) > nowH) || '09:00';
-  const endTime = endSlotsFor(startTime)[0] || '10:00';
+  const endTime = endSlotsFor(startTime)[0] || '10:30';
   return { facilityId, date, startTime, endTime };
 }
 
@@ -77,7 +85,7 @@ export default function Bookings() {
 
   const [avail, setAvail] = useState(null);
   const [availTimer, setAvailTimer] = useState(null);
-  const [cancelTarget, setCancelTarget] = useState(null); // booking to cancel
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -93,7 +101,6 @@ export default function Bookings() {
 
   function openEdit(b) {
     const facility = facilities.find(f => f.name === b.facilityName);
-    // Snap times to nearest slot (bookings created with slots will match exactly)
     const start = fmtTime(b.startTime);
     const end = fmtTime(b.endTime);
     setForm({
@@ -173,11 +180,21 @@ export default function Bookings() {
 
   async function handleSave() {
     if (!form.facilityId || !form.date || !form.startTime || !form.endTime) {
-      toast('Please fill in all fields.', 'error'); return;
+      toast('Please fill in all fields.', 'error');
+      return;
     }
-    if (!isWeekday(form.date)) { toast('Bookings are only allowed Mon – Fri.', 'error'); return; }
-    if (form.startTime >= form.endTime) { toast('End time must be after start time.', 'error'); return; }
-    if (avail === false) { toast('This facility is not available for the selected time slot.', 'error'); return; }
+    if (!isWeekday(form.date)) {
+      toast('Bookings are only allowed Mon – Fri.', 'error');
+      return;
+    }
+    if (form.startTime >= form.endTime) {
+      toast('End time must be after start time.', 'error');
+      return;
+    }
+    if (avail === false) {
+      toast('This facility is not available for the selected time slot.', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
       facilityId: Number(form.facilityId),
@@ -190,7 +207,10 @@ export default function Bookings() {
       ? await createBooking(payload)
       : await updateBooking(selected.id, payload);
     setSaving(false);
-    if (err) { toast(err, 'error'); return; }
+    if (err) {
+      toast(err, 'error');
+      return;
+    }
     if (modal === 'create') await load();
     else setBookings(prev => prev.map(b => b.id === selected.id ? data : b));
     toast(modal === 'create' ? 'Booking confirmed!' : 'Booking updated!', 'success');
@@ -199,16 +219,17 @@ export default function Bookings() {
 
   async function confirmCancel() {
     const [, err] = await cancelBooking(cancelTarget.id);
-    if (err) { toast(err, 'error'); setCancelTarget(null); return; }
+    if (err) {
+      toast(err, 'error');
+      setCancelTarget(null);
+      return;
+    }
     setBookings(prev => prev.map(b => b.id === cancelTarget.id ? { ...b, status: 'CANCELLED' } : b));
     toast('Booking cancelled.', 'info');
     setCancelTarget(null);
   }
 
-  // Backend already filters by user for non-admins
-  const myBookings = bookings;
-
-  const tabFiltered = myBookings.filter(b => {
+  const tabFiltered = bookings.filter(b => {
     if (activeTab === 'upcoming') return b.status === 'CONFIRMED' && isFuture(parseISO(b.date));
     if (activeTab === 'cancelled') return b.status === 'CANCELLED';
     return true;
@@ -244,79 +265,22 @@ export default function Bookings() {
     );
   };
 
-  const BookingForm = () => (
-    <>
-      <div className="form-group">
-        <label className="form-label">Facility</label>
-        <select className="form-control" value={form.facilityId} onChange={setField('facilityId')}>
-          <option value="">Select a facility…</option>
-          {facilities.map(f => (
-            <option key={f.id} value={f.id}>{f.name} — {f.location} (cap. {f.capacity})</option>
-          ))}
-        </select>
-      </div>
-      <div className="form-group">
-        <label className="form-label">
-          Date{' '}
-          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-            Mon – Fri only
-          </span>
-        </label>
-        <input type="date" className="form-control" value={form.date} min={today} onChange={handleDateChange} />
-      </div>
-      <div className="form-group">
-        <label className="form-label">Start Time</label>
-        <div className="slot-grid">
-          {START_SLOTS.map(t => (
-            <button type="button" key={t}
-              className={`slot-btn${form.startTime === t ? ' selected' : ''}`}
-              onClick={() => handleStartSlot(t)}
-              disabled={isPastSlot(t, form.date)}
-            >{fmtSlot(t)}</button>
-          ))}
-        </div>
-      </div>
-      <div className="form-group">
-        <label className="form-label">End Time</label>
-        <div className="slot-grid">
-          {endSlotsFor(form.startTime).map(t => (
-            <button type="button" key={t}
-              className={`slot-btn${form.endTime === t ? ' selected' : ''}`}
-              onClick={() => handleEndSlot(t)}
-            >{fmtSlot(t)}</button>
-          ))}
-        </div>
-      </div>
-      <AvailBadge />
-    </>
+  if (loading) return (
+    <div className="page-wrapper loading-page">
+      <div className="spinner" /><span>Loading bookings…</span>
+    </div>
   );
 
   return (
     <div className="page-wrapper page-enter">
       <div className="page-header">
         <div className="page-title">
-          <span>Reservations</span>
-          <h1>{isAdmin ? 'All Bookings' : 'My Bookings'}</h1>
+          <span>Facility Bookings</span>
+          <h1>My Reservations</h1>
         </div>
         <button className="btn btn-primary" onClick={openCreate}>
           <Plus size={15} /> New Booking
         </button>
-      </div>
-
-      <div className="tabs">
-        {[
-          { id: 'upcoming', label: 'Upcoming' },
-          { id: 'all', label: `All (${myBookings.length})` },
-          { id: 'cancelled', label: 'Cancelled' },
-        ].map(t => (
-          <button
-            key={t.id}
-            className={`tab-btn ${activeTab === t.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <div className="filter-bar">
@@ -324,47 +288,62 @@ export default function Bookings() {
           <Search size={15} />
           <input
             className="form-control"
-            placeholder="Search by facility, user, or date…"
+            placeholder="Search bookings…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', alignSelf: 'center' }}>
-          {displayed.length} booking{displayed.length !== 1 ? 's' : ''}
-        </span>
+        <div className="tabs">
+          <button
+            className={`tab-btn ${activeTab === 'upcoming' ? 'active' : ''}`}
+            onClick={() => setActiveTab('upcoming')}
+          >
+            Upcoming
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'cancelled' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cancelled')}
+          >
+            Cancelled
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="loading-page"><div className="spinner" /><span>Loading bookings…</span></div>
-      ) : displayed.length === 0 ? (
+      {displayed.length === 0 ? (
         <div className="empty-state">
           <CalendarDays size={48} />
-          <h3>{search ? 'No matching bookings' : 'No bookings found'}</h3>
-          <p>{activeTab === 'upcoming' ? 'You have no upcoming reservations.' : 'Nothing to show here.'}</p>
+          <h3>No bookings found</h3>
+          <p>{search ? 'Try a different search term' : 'Create your first booking'}</p>
         </div>
       ) : (
         <div className="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th>Facility</th>
                 {isAdmin && <th>User</th>}
+                <th>Facility</th>
                 <th>Date</th>
                 <th className="bookings-time-col">Time</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {displayed.map(b => (
                 <tr key={b.id}>
+                  {isAdmin && <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{b.userName}</td>}
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Building2 size={14} color="var(--gold)" />
-                      <strong>{b.facilityName}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}>
+                      <Building2 size={13} color="var(--gold)" />
+                      {b.facilityName}
                     </div>
                   </td>
-                  {isAdmin && <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{b.userName}</td>}
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}>
                       <CalendarDays size={13} color="var(--text-muted)" />
@@ -381,18 +360,20 @@ export default function Bookings() {
                     <span className={`badge badge-${b.status?.toLowerCase()}`}>{b.status}</span>
                   </td>
                   <td>
-                    <div className="td-actions">
-                      {b.status === 'CONFIRMED' && isFuture(parseISO(b.date)) && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)}>
-                          <Edit3 size={13} /> Edit
-                        </button>
-                      )}
-                      {b.status === 'CONFIRMED' && (
-                        <button className="btn btn-danger btn-sm" onClick={() => setCancelTarget(b)}>
-                          <XCircle size={13} /> Cancel
-                        </button>
-                      )}
-                    </div>
+                    {(isAdmin || b.userId === user?.id) && (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {b.status === 'CONFIRMED' && (
+                          <>
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)}>
+                              <Edit3 size={13} />
+                            </button>
+                            <button className="btn btn-danger btn-sm" onClick={() => setCancelTarget(b)}>
+                              <XCircle size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -401,6 +382,7 @@ export default function Bookings() {
         </div>
       )}
 
+      {/* Create / Edit Modal */}
       <Modal
         open={modal === 'create' || modal === 'edit'}
         title={modal === 'create' ? 'New Booking' : 'Edit Booking'}
@@ -408,18 +390,50 @@ export default function Bookings() {
         footer={
           <>
             <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={saving || avail === false}
-            >
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 size={15} /> : <CheckCircle2 size={15} />}
-              {modal === 'create' ? 'Confirm Booking' : 'Save Changes'}
+              {modal === 'create' ? 'Create Booking' : 'Save Changes'}
             </button>
           </>
         }
       >
-        <BookingForm />
+        <div className="form-group">
+          <label className="form-label">Facility</label>
+          <select className="form-control" value={form.facilityId} onChange={setField('facilityId')}>
+            <option value="">Select a facility</option>
+            {facilities.map(f => (
+              <option key={f.id} value={f.id}>{f.name} - {f.location}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Date (Mon – Fri only)</label>
+          <input type="date" className="form-control" value={form.date} min={today} onChange={handleDateChange} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Start Time</label>
+          <div className="slot-grid">
+            {START_SLOTS.map(t => (
+              <button type="button" key={t}
+                className={`slot-btn${form.startTime === t ? ' selected' : ''}`}
+                onClick={() => handleStartSlot(t)}
+                disabled={isPastSlot(t, form.date)}
+              >{fmtSlot(t)}</button>
+            ))}
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">End Time</label>
+          <div className="slot-grid">
+            {endSlotsFor(form.startTime).map(t => (
+              <button type="button" key={t}
+                className={`slot-btn${form.endTime === t ? ' selected' : ''}`}
+                onClick={() => handleEndSlot(t)}
+              >{fmtSlot(t)}</button>
+            ))}
+          </div>
+        </div>
+        <AvailBadge />
       </Modal>
 
       {/* Cancel confirmation modal */}
@@ -438,8 +452,9 @@ export default function Bookings() {
         }
       >
         <p style={{ color: 'var(--text-secondary)' }}>
-          Are you sure you want to cancel your reservation for{' '}
-          <strong style={{ color: 'var(--text-primary)' }}>{cancelTarget?.facilityName}</strong>?
+          Are you sure you want to cancel the booking for{' '}
+          <strong style={{ color: 'var(--text-primary)' }}>{cancelTarget?.facilityName}</strong>
+          {' '}on {cancelTarget?.date}?
           This action cannot be undone.
         </p>
       </Modal>

@@ -13,8 +13,14 @@ import {
 } from 'lucide-react';
 
 // ─── Time slot config ────────────────────────────────────────────────────────
-const START_SLOTS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
-const ALL_END_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+const START_SLOTS = [
+  '07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'
+];
+const ALL_END_SLOTS = [
+  '07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'
+];
 
 // ─── FacilityForm Component (Memoized) ──────────────────────────────────────
 const FacilityFormComponent = memo(({ form, setField }) => (
@@ -40,9 +46,11 @@ function endSlotsFor(start) {
 }
 
 function fmtSlot(t) {
-  const h = parseInt(t, 10);
-  if (h === 12) return '12:00 PM';
-  return h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
 function isWeekday(dateStr) {

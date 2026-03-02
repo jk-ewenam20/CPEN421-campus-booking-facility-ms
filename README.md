@@ -1,21 +1,27 @@
 # CampusBook — Facility Booking Microservice
 
+**Contributors:**
+
+- Daniel Agyin Manford - 11015506
+- Kudiabor Jonathan Kwabena Ewenam - 11254301
+
+**Github:** https://github.com/jk-ewenam20/CPEN421-campus-booking-facility-ms.git
+
 A full-stack campus space reservation system. Students browse available facilities and book time slots in real time. Admins manage facilities, users, and all bookings through a dedicated dashboard.
 
-> **Screenshot placeholder** — add a screenshot of the landing page here.
-
+![alt text](landing.png)
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Backend | Spring Boot 3.5.x, Java 21, Spring Security (session-based) |
-| Database | PostgreSQL 15+ |
-| API Docs | SpringDoc OpenAPI 2.8.x (Swagger UI at `/swagger-ui.html`) |
-| Frontend | React 18 + Vite, React Router v6 |
-| Styling | Custom CSS design system (no external CSS framework) |
-| Hosting | Render (backend + DB) · Vercel (frontend) |
+| Layer    | Technology                                                  |
+| -------- | ----------------------------------------------------------- |
+| Backend  | Spring Boot 3.5.x, Java 21, Spring Security (session-based) |
+| Database | PostgreSQL 15+                                              |
+| API Docs | SpringDoc OpenAPI 2.8.x (Swagger UI at `/swagger-ui.html`)  |
+| Frontend | React 18 + Vite, React Router v6                            |
+| Styling  | Custom CSS design system (no external CSS framework)        |
+| Hosting  | Render (backend + DB) · Vercel (frontend)                   |
 
 ---
 
@@ -83,19 +89,20 @@ Frontend runs at **http://localhost:3000** (Vite proxies API calls to `:8080`).
 
 ### Backend (`application.properties` / system env)
 
-| Variable | Default | Description |
-|---|---|---|
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated list of allowed frontend origins |
-| `APP_SERVER_URL` | `http://localhost:8080` | Backend URL shown in Swagger UI server list |
-| `SPRING_PROFILES_ACTIVE` | _(none)_ | Set to `prod` on Render for cross-origin cookie settings |
+| Variable                 | Default                 | Description                                              |
+| ------------------------ | ----------------------- | -------------------------------------------------------- |
+| `CORS_ALLOWED_ORIGINS`   | `http://localhost:3000` | Comma-separated list of allowed frontend origins         |
+| `APP_SERVER_URL`         | `http://localhost:8080` | Backend URL shown in Swagger UI server list              |
+| `SPRING_PROFILES_ACTIVE` | _(none)_                | Set to `prod` on Render for cross-origin cookie settings |
 
 ### Frontend (`.env`)
 
-| Variable | Default | Description |
-|---|---|---|
+| Variable            | Default   | Description                                                               |
+| ------------------- | --------- | ------------------------------------------------------------------------- |
 | `VITE_API_BASE_URL` | _(empty)_ | Leave empty for local dev (Vite proxy). Set to Render URL for production. |
 
 Copy `.env.example` to `.env` for local setup:
+
 ```bash
 cp .env.example .env
 ```
@@ -104,25 +111,25 @@ cp .env.example .env
 
 ## API Endpoints Summary
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/auth/login` | Public | Login — returns session cookie |
-| POST | `/auth/logout` | Authenticated | Invalidate session |
-| POST | `/users` | Public | Register new user |
-| GET | `/users` | ADMIN | List all users |
-| GET | `/users/{id}` | Self or ADMIN | Get user by ID |
-| PUT | `/users/{id}` | Self or ADMIN | Update user |
-| DELETE | `/users/{id}` | ADMIN | Delete user |
-| GET | `/facilities` | Public | List all facilities |
-| GET | `/facilities/{id}` | Public | Get facility by ID |
-| POST | `/facilities` | ADMIN | Create facility |
-| PUT | `/facilities/{id}` | ADMIN | Update facility |
-| DELETE | `/facilities/{id}` | ADMIN | Delete facility |
-| GET | `/bookings` | Authenticated | List bookings (filtered by role) |
-| POST | `/bookings` | Authenticated | Create booking |
-| PUT | `/bookings/{id}` | Owner or ADMIN | Update booking |
-| DELETE | `/bookings/{id}` | Owner or ADMIN | Cancel booking |
-| GET | `/bookings/availability` | Authenticated | Check time-slot availability |
+| Method | Path                     | Auth           | Description                      |
+| ------ | ------------------------ | -------------- | -------------------------------- |
+| POST   | `/auth/login`            | Public         | Login — returns session cookie   |
+| POST   | `/auth/logout`           | Authenticated  | Invalidate session               |
+| POST   | `/users`                 | Public         | Register new user                |
+| GET    | `/users`                 | ADMIN          | List all users                   |
+| GET    | `/users/{id}`            | Self or ADMIN  | Get user by ID                   |
+| PUT    | `/users/{id}`            | Self or ADMIN  | Update user                      |
+| DELETE | `/users/{id}`            | ADMIN          | Delete user                      |
+| GET    | `/facilities`            | Public         | List all facilities              |
+| GET    | `/facilities/{id}`       | Public         | Get facility by ID               |
+| POST   | `/facilities`            | ADMIN          | Create facility                  |
+| PUT    | `/facilities/{id}`       | ADMIN          | Update facility                  |
+| DELETE | `/facilities/{id}`       | ADMIN          | Delete facility                  |
+| GET    | `/bookings`              | Authenticated  | List bookings (filtered by role) |
+| POST   | `/bookings`              | Authenticated  | Create booking                   |
+| PUT    | `/bookings/{id}`         | Owner or ADMIN | Update booking                   |
+| DELETE | `/bookings/{id}`         | Owner or ADMIN | Cancel booking                   |
+| GET    | `/bookings/availability` | Authenticated  | Check time-slot availability     |
 
 ---
 
@@ -153,17 +160,21 @@ cp .env.example .env
 ## Troubleshooting
 
 ### CORS errors
+
 - Ensure `CORS_ALLOWED_ORIGINS` on Render exactly matches your Vercel URL (no trailing slash).
 - Production profile (`SPRING_PROFILES_ACTIVE=prod`) must be active for `SameSite=None; Secure` cookies.
 
 ### Session / cookie not sent
+
 - In production, both Vercel (HTTPS) and Render (HTTPS) must use `https://`. The `Secure` flag on the cookie requires HTTPS.
 - The frontend must use `credentials: 'include'` on all fetch calls (already configured in `src/api/client.js`).
 
 ### Bookings not showing for regular users
+
 - Ensure the backend returns `name` in the login response. The `user.name` field in sessionStorage is what the booking filter uses.
 - Check `sessionStorage.getItem('cbms_user')` in browser devtools — it should contain a `name` field.
 
 ### Swagger UI not loading
+
 - Uses springdoc-openapi **2.8.x** — do not downgrade to 2.5.x (incompatible with Spring Framework 6.2.x).
 - `server.compression.enabled=false` must remain in `application.properties`.
