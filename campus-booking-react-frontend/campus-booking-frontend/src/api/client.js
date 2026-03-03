@@ -226,18 +226,17 @@ export async function getMyBookings() {
 }
 
 // ── Session Validation ────────────────────────────────────────────────────────
-// For Safari: validate session is still alive when app starts
+// Checks if the stored token/cookie is still valid without clearing auth on failure.
+// Individual API calls handle 401 when the user actually uses the app.
 export async function validateSession() {
   const user = getAuthUser();
   if (!user) return [null, 'No user'];
 
-  // Make a simple request to validate cookie/token still works
   try {
     const res = await request('GET', '/bookings');
-    const [, err] = await parseResponse(res);
-    if (err) return [null, err];
-    return [user, null];
+    if (res.ok) return [user, null];
+    return [null, `HTTP ${res.status}`];
   } catch (e) {
-    return [null, e?.message || 'Session validation failed'];
+    return [null, e?.message || 'Network error'];
   }
 }

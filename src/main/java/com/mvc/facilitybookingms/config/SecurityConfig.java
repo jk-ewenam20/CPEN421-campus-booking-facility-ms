@@ -1,6 +1,8 @@
 package com.mvc.facilitybookingms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mvc.facilitybookingms.security.TokenAuthFilter;
+import com.mvc.facilitybookingms.security.TokenStore;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -29,6 +32,14 @@ import java.util.Map;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final TokenAuthFilter tokenAuthFilter;
+    private final TokenStore tokenStore;
+
+    public SecurityConfig(TokenAuthFilter tokenAuthFilter, TokenStore tokenStore) {
+        this.tokenAuthFilter = tokenAuthFilter;
+        this.tokenStore = tokenStore;
+    }
+
     @Value("${cors.allowed.origins:http://localhost:3000}")
     private String allowedOrigins;
 
@@ -42,6 +53,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .addFilterBefore(tokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
@@ -68,6 +80,12 @@ public class SecurityConfig {
                 .logoutUrl("/auth/logout")
                 .invalidateHttpSession(true)
                 .deleteCookies("JSESSIONID")
+                .addLogoutHandler((request, response, authentication) -> {
+                    String authHeader = request.getHeader("Authorization");
+                    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                        tokenStore.remove(authHeader.substring(7));
+                    }
+                })
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
                     response.setContentType("application/json");

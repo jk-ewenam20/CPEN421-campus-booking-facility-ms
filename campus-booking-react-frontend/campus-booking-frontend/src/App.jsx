@@ -1,11 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './hooks/useToast';
 import Navbar from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Pages
 import LandingPage from './pages/LandingPage';
+import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -25,23 +26,6 @@ function AppLayout() {
       </main>
     </>
   );
-}
-
-// Smart root redirect
-function RootRedirect() {
-  const { user, isAdmin, isLoading } = useAuth();
-
-  // Don't render while loading
-  if (isLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>Loading...</div>
-      </div>
-    </div>;
-  }
-
-  if (!user) return <Navigate to="/" replace />;
-  return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
 }
 
 export default function App() {
@@ -65,8 +49,8 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
             </Route>
 
-            {/* Catch-all redirect */}
-            <Route path="*" element={<RootRedirect />} />
+            {/* Catch-all — custom 404 */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

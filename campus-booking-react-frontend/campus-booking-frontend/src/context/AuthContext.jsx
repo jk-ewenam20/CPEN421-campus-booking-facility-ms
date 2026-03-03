@@ -20,18 +20,15 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // We have a saved user, validate the session is still active
-        // This is important for Safari where cookies may expire
+        // Validate the session is still active (token/cookie check)
         const [validatedUser, err] = await validateSession();
 
-        if (err) {
-          // Session invalid, clear it
-          setAuthUser(null);
-          setUserState(null);
-        } else if (validatedUser) {
-          // Session is valid
+        if (!err && validatedUser) {
+          // Session confirmed valid
           setUserState(validatedUser);
         }
+        // On validation failure: trust localStorage — the user is still set from
+        // useState initializer. Individual API calls handle 401 when they occur.
       } catch (err) {
         // Network error or validation failed - trust localStorage for now
         const savedUser = getAuthUser();

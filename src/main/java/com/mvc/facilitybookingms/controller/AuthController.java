@@ -3,6 +3,7 @@ package com.mvc.facilitybookingms.controller;
 import com.mvc.facilitybookingms.dto.LoginRequestDTO;
 import com.mvc.facilitybookingms.dto.LoginResponseDTO;
 import com.mvc.facilitybookingms.security.CustomUserDetails;
+import com.mvc.facilitybookingms.security.TokenStore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
+    private final TokenStore tokenStore;
     private final HttpSessionSecurityContextRepository securityContextRepository =
             new HttpSessionSecurityContextRepository();
 
@@ -60,12 +62,15 @@ public class AuthController {
         String role = userDetails.getAuthorities().iterator().next().getAuthority()
                 .replace("ROLE_", "");
 
+        String token = tokenStore.store(authentication);
+
         LoginResponseDTO response = new LoginResponseDTO(
                 userDetails.getUserId(),
                 userDetails.getEmail(),
                 role,
                 userDetails.getName(),
-                "Login successful"
+                "Login successful",
+                token
         );
 
         return ResponseEntity.ok(response);
